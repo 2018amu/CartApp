@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Privacy Policy</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 2em auto; line-height: 1.6; }
+        h1 { color: #333; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .consent { margin-top: 2em; }
+    </style>
+</head>
+<body>
+    <h1>Privacy Policy</h1>
+    <p>We respect your privacy. We collect only minimal information necessary for service delivery, such as your age, job, interests, and engagement history.</p>
+    <p>Collected data is retained for 1 year. You may request deletion of your personal data at any time.</p>
+    <p>We may use your data for personalized ads and service improvements. You can choose to opt-out below.</p>
+
+    <div class="consent">
+        <h2>Your Choices</h2>
+        <button id="allow">Allow Ads/Profiling</button>
+        <button id="optout">Opt-Out Ads/Profiling</button>
+        <p id="status"></p>
+    </div>
+
+    <div class="delete-data">
+        <h2>Delete My Data</h2>
+        <input type="text" id="user_id" placeholder="Enter your user ID">
+        <button id="delete">Delete My Data</button>
+        <p id="delete-status"></p>
+    </div>
+
+    <script>
+        const status = document.getElementById("status");
+        const deleteStatus = document.getElementById("delete-status");
+
+        // Consent buttons
+        document.getElementById("allow").onclick = async () => {
+            const res = await fetch("/api/engagement/consent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ consent_ads: true })
+            });
+            const data = await res.json();
+            status.innerText = data.status ? "Ads/Profiling allowed" : "Error: " + data.error;
+        };
+
+        document.getElementById("optout").onclick = async () => {
+            const res = await fetch("/api/engagement/consent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ consent_ads: false })
+            });
+            const data = await res.json();
+            status.innerText = data.status ? "You have opted out of Ads/Profiling" : "Error: " + data.error;
+        };
+
+        // Delete user data
+        document.getElementById("delete").onclick = async () => {
+            const userId = document.getElementById("user_id").value.trim();
+            if (!userId) {
+                deleteStatus.innerText = "Please enter your user ID.";
+                return;
+            }
+            const res = await fetch("/api/user/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: userId })
+            });
+            const data = await res.json();
+            deleteStatus.innerText = data.status === "deleted" ? "Your data has been deleted." : "Error: " + data.error;
+        };
+    </script>
+</body>
+</html>

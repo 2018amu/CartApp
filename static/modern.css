@@ -1,0 +1,262 @@
+/* modern.css - Citizen Services Portal */
+
+/* --- General Reset --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+  }
+  
+  body {
+    background: #f9f9f9;
+    color: #333;
+  }
+  
+  /* --- Container Layout --- */
+  .container {
+    display: flex;
+    height: 100vh;
+  }
+  
+  /* --- Sidebar --- */
+  .sidebar {
+    width: 250px;
+    background: #2c3e50;
+    color: #fff;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  
+  .sidebar h2 {
+    margin-bottom: 15px;
+    font-size: 1.2em;
+  }
+  
+  .cat-item {
+    padding: 8px 10px;
+    margin: 5px 0;
+    background: #34495e;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  
+  .cat-item:hover {
+    background: #1abc9c;
+  }
+  
+  .lang-switch button {
+    margin: 5px 2px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  
+  /* --- Ads --- */
+  .ads .ad-card {
+    background: #1abc9c;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 4px;
+  }
+  
+  .ads .ad-card a {
+    color: #fff;
+    text-decoration: none;
+  }
+  
+  /* --- Middle Section --- */
+  .middle {
+    width: 250px;
+    background: #ecf0f1;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  
+  #sub-list li {
+    padding: 5px;
+    cursor: pointer;
+    list-style: none;
+  }
+  
+  #sub-list li:hover {
+    background: #bdc3c7;
+  }
+  
+  /* --- Main Content --- */
+  .content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  
+  .search-row {
+    display: flex;
+    margin-bottom: 15px;
+  }
+  
+  .search-row input {
+    flex: 1;
+    padding: 8px;
+    border-radius: 4px 0 0 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .search-row button {
+    padding: 8px 15px;
+    border: none;
+    background: #1abc9c;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 0 4px 4px 0;
+  }
+  
+  #question-list li {
+    padding: 6px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  #question-list li:hover {
+    background: #f0f0f0;
+  }
+  
+  #answer-box {
+    margin-top: 15px;
+    padding: 10px;
+    background: #fff;
+    border-radius: 4px;
+  }
+  
+  /* --- Profile Modal --- */
+  .modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 6px;
+    width: 350px;
+  }
+  
+  .profile-step {
+    margin-bottom: 10px;
+  }
+  
+  .profile-step input {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .profile-step button {
+    padding: 6px 12px;
+    margin: 5px 3px;
+    cursor: pointer;
+    background: #1abc9c;
+    border: none;
+    color: #fff;
+    border-radius: 4px;
+  }
+  
+  /* --- Chat Panel --- */
+  .chat-panel {
+    width: 300px;
+    background: #ecf0f1;
+    position: fixed;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    display: none;
+    flex-direction: column;
+  }
+  
+  .chat-header {
+    background: #2c3e50;
+    color: #fff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .chat-body {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+  }
+  
+  .chat-msg {
+    margin: 5px 0;
+    padding: 6px 10px;
+    border-radius: 4px;
+    max-width: 80%;
+  }
+  
+  .user-msg {
+    background: #1abc9c;
+    color: #fff;
+    align-self: flex-end;
+  }
+  
+  .bot-msg {
+    background: #bdc3c7;
+    color: #333;
+    align-self: flex-start;
+  }
+  
+  .chat-input {
+    display: flex;
+    padding: 10px;
+    background: #fff;
+    border-top: 1px solid #ccc;
+  }
+  
+  .chat-input input {
+    flex: 1;
+    padding: 6px;
+    border-radius: 4px 0 0 4px;
+    border: 1px solid #ccc;
+  }
+  
+  .chat-input button {
+    padding: 6px 10px;
+    border: none;
+    background: #1abc9c;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 0 4px 4px 0;
+  }
+  
+  .suggestions {
+    background: #fff;
+    border: 1px solid #ccc;
+    max-height: 150px;
+    overflow-y: auto;
+    position: absolute;
+    width: calc(100% - 20px);
+    z-index: 100;
+  }
+  
+  .s-item {
+    padding: 5px;
+    cursor: pointer;
+  }
+  
+  .s-item:hover {
+    background: #1abc9c;
+    color: #fff;
+  }
+  

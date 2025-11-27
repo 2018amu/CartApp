@@ -1,0 +1,70 @@
+/* General body and font */
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+/* Headings */
+h1 {
+    text-align: center;
+    color: #2c3e50;
+}
+h2 {
+    margin-top: 20px;
+    color: #34495e;
+}
+
+/* Panel styling */
+.panel {
+    border: 1px solid #ccc;
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* Input and select styling */
+.panel input, .panel select {
+    margin: 5px 0;
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+/* Buttons */
+.panel button {
+    margin-top: 10px;
+    padding: 10px 16px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    background-color: #3498db;
+    color: #fff;
+    font-size: 14px;
+    transition: background 0.3s ease;
+}
+
+.panel button:hover {
+    background-color: #2980b9;
+}
+
+/* Rebuild AI Index button */
+.rebuild-btn {
+    background-color: #2ecc71;
+}
+
+.rebuild-btn:hover {
+    background-color: #27ae60;
+}
+
+/* Result text */
+#cat-result, #off-result, #ad-result, #index-result {
+    margin-top: 10px;
+    font-weight: bold;
+    color: #e67e22;
+}

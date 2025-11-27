@@ -11,6 +11,7 @@ CHUNKS_PATH = "data/chunks.json"
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+
 def extract_text_from_pdf(path):
     reader = PdfReader(path)
     pages = []
@@ -18,14 +19,17 @@ def extract_text_from_pdf(path):
         pages.append(p.extract_text() or "")
     return "\n".join(pages)
 
+
 def extract_text_from_html(path):
     html = open(path, "r", encoding="utf8").read()
     soup = BeautifulSoup(html, "html.parser")
     return soup.get_text(separator=" ")
 
+
 def chunk_text(text, size=300):
     words = text.split()
-    return [" ".join(words[i:i+size]) for i in range(0, len(words), size)]
+    return [" ".join(words[i : i + size]) for i in range(0, len(words), size)]
+
 
 def build_vectorstore():
     print("Building vector DB...")
@@ -33,7 +37,11 @@ def build_vectorstore():
     folder = Path(DATA_DIR)
     folder.mkdir(exist_ok=True)
 
-    files = [str(p) for p in folder.iterdir() if p.suffix.lower() in (".pdf",".html",".htm")]
+    files = [
+        str(p)
+        for p in folder.iterdir()
+        if p.suffix.lower() in (".pdf", ".html", ".htm")
+    ]
 
     if not files:
         print("No PDF/HTML files found in data/.")
@@ -58,6 +66,7 @@ def build_vectorstore():
     json.dump(chunks, open(CHUNKS_PATH, "w", encoding="utf8"), indent=2)
 
     print("✔ Vector DB generated successfully!")
+
 
 if __name__ == "__main__":
     build_vectorstore()

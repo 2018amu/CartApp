@@ -1,5 +1,6 @@
 import os
-os.environ["HF_HOME"] = "D:/huggingface_cache" # store in local disk D
+
+os.environ["HF_HOME"] = "D:/huggingface_cache"  # store in local disk D
 
 from pymongo import MongoClient
 import chromadb
@@ -15,6 +16,7 @@ client = MongoClient(MONGO_URI)
 db = client["citizen_portal"]
 collection_mongo = db["services"]
 
+
 # Clean MongoDB documents
 def clean_doc(doc):
     for k, v in doc.items():
@@ -26,6 +28,7 @@ def clean_doc(doc):
             doc[k] = clean_doc(v)
     return doc
 
+
 # Flatten questions for vector store
 docs = []
 for doc in collection_mongo.find({}):
@@ -35,11 +38,17 @@ for doc in collection_mongo.find({}):
             question_text = q.get("q", {}).get("en")  # store English question
             answer_text = q.get("answer", {}).get("en")  # store English answer
             if question_text and answer_text:
-                docs.append({
-                    "id": str(cleaned["_id"]) + "_" + str(sub["id"]) + "_" + str(hash(question_text)),
-                    "text": question_text,            # vectorize the question
-                    "metadata": {"answer": answer_text}
-                })
+                docs.append(
+                    {
+                        "id": str(cleaned["_id"])
+                        + "_"
+                        + str(sub["id"])
+                        + "_"
+                        + str(hash(question_text)),
+                        "text": question_text,  # vectorize the question
+                        "metadata": {"answer": answer_text},
+                    }
+                )
 
 if not docs:
     raise ValueError("No questions found in MongoDB to build vectorstore.")
@@ -50,14 +59,13 @@ embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction(
     model_name="all-MiniLM-L6-v2"
 )
 collection = chroma_client.get_or_create_collection(
-    name="citizen_services",
-    embedding_function=embedding_function
+    name="citizen_services", embedding_function=embedding_function
 )
 
 collection.add(
     documents=[d["text"] for d in docs],
     ids=[d["id"] for d in docs],
-    metadatas=[d["metadata"] for d in docs]
+    metadatas=[d["metadata"] for d in docs],
 )
 
 print("✅ Vectorstore created successfully with questions and answers!")
