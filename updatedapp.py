@@ -1,4 +1,3 @@
-# updatedapp.py
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
 from flask_cors import CORS
 from flask_session import Session
@@ -10,22 +9,50 @@ import os
 from functools import wraps
 import csv
 import io
+import pathlib
 
-# ----- Config -----
+# ------------- FAISS + Embeddings -------------
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except Exception:
+    FAISS_AVAILABLE = False
+
+from sentence_transformers import SentenceTransformer
+
+EMBED_MODEL = None
+INDEX_PATH = pathlib.Path("./data/faiss.index")
+META_PATH = pathlib.Path("./data/faiss_meta.json")
+VECTOR_DIM = 384  # all-MiniLM-L6-v2
+
+
+def get_embedding_model():
+    global EMBED_MODEL
+    if EMBED_MODEL is None:
+        EMBED_MODEL = SentenceTransformer(
+            os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+        )
+    return EMBED_MODEL
+
+
+# ------------- Flask Config -------------
 app = Flask(__name__, static_folder="static", template_folder="templates")
 app.secret_key = os.environ.get("FLASK_SECRET", "prod-secret-key")
 app.config["SESSION_TYPE"] = "filesystem"
-app.config["SESSION_COOKIE_SECURE"] = True
+# In development you may want cookies to be non-secure (HTTP). Set via env in production.
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("SESSION_COOKIE_SECURE", "False") == "True"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
 Session(app)
-CORS(app)
+# allow credentials so session cookie works with CORS-enabled frontends
+CORS(app, supports_credentials=True)
 
 MONGO_URI = os.environ.get(
     "MONGO_URI",
     "mongodb+srv://amushun1992_db_user:PwQge1UbU41Z3Xjs@tm-users.vxuhp3p.mongodb.net/citizen_portal?retryWrites=true&w=majority"
 )
 
-# ----- MongoDB -----
+# ------------- MongoDB -------------
 client = MongoClient(MONGO_URI)
 db = client["citizen_portal"]
 
@@ -35,8 +62,67 @@ officers_col = db["officers"]
 ads_col = db["ads"]
 admins_col = db["admins"]
 eng_col = db["engagements"]
+profiles_col = db["profiles"]
 
-# ----- Helpers -----
+
+#  //profile
+@app.route("/api/profile/step", methods=["POST"])
+def api_profile_step():
+    data = request.json or {}
+    step = data.get("step")
+    profile_id = data.get("profile_id")
+    step_data = data.get("data", {})
+
+    if step not in ["basic", "contact", "employment"]:
+        return jsonify({"error": "Invalid step"}), 400
+
+    # STEP 1: create profile
+    if step == "basic":
+        doc = {
+            "name": step_data.get("name"),
+            "age": step_data.get("age"),
+            "email": step_data.get("email"),
+            "phone": None,
+            "job": None,
+            "created_at": datetime.utcnow()
+        }
+        result = profiles_col.insert_one(doc)
+        return jsonify({"profile_id": str(result.inserted_id)})
+
+    # STEP 2 + STEP 3 require profile_id
+    if not profile_id:
+        return jsonify({"error": "profile_id required"}), 400
+
+    try:
+        pid = ObjectId(profile_id)
+    except Exception:
+        return jsonify({"error": "Invalid profile_id"}), 400
+
+    # STEP 2: update contact
+    if step == "contact":
+        profiles_col.update_one(
+            {"_id": pid},
+            {"$set": {
+                "email": step_data.get("email"),
+                "phone": step_data.get("phone")
+            }}
+        )
+        return jsonify({"status": "ok"})
+
+    # STEP 3: update employment
+    if step == "employment":
+        profiles_col.update_one(
+            {"_id": pid},
+            {"$set": {
+                "job": step_data.get("job")
+            }}
+        )
+        return jsonify({"status": "ok"})
+
+    return jsonify({"error": "Unhandled case"}), 400
+
+
+# ------------- JSON Helper -------------
 def to_jsonable(obj):
     if isinstance(obj, ObjectId):
         return str(obj)
@@ -48,6 +134,8 @@ def to_jsonable(obj):
         return [to_jsonable(v) for v in obj]
     return obj
 
+
+# ------------- Admin Auth -------------
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -59,11 +147,13 @@ def admin_required(fn):
         return fn(*args, **kwargs)
     return wrapper
 
-# ----- Admin creation -----
+
+# ------------- Default Admin Creation -------------
 def create_default_admin():
     admin = admins_col.find_one({"username": "admin"})
     if admin:
         stored = admin.get("password")
+        # if stored password was accidentally saved as plain string, remove and recreate
         if isinstance(stored, str):
             admins_col.delete_one({"_id": admin["_id"]})
         else:
@@ -73,13 +163,84 @@ def create_default_admin():
     admins_col.insert_one({"username": "admin", "password": hashed})
     print("Default admin created: username='admin', password='admin123'")
 
-# ----- Routes -----
+
+def build_faiss_index():
+    if not FAISS_AVAILABLE:
+        print(" FAISS not available — using fallback text search.")
+        return None
+
+    services = list(services_col.find({}, {"_id": 0}))
+    items = []
+    texts = []
+
+    # flatten questions → embedding list
+    for service in services:
+        for sub in service.get("subservices", []):
+            for q in sub.get("questions", []):
+                full_text = (
+                    service.get("name", {}).get("en", "") + " "
+                    + sub.get("name", {}).get("en", "") + " "
+                    + q.get("q", {}).get("en", "")
+                )
+                texts.append(full_text)
+                items.append({
+                    "service": service.get("name", {}).get("en"),
+                    "subservice": sub.get("name", {}).get("en"),
+                    "question": q.get("q", {}).get("en"),
+                    "answer": q.get("answer", {}).get("en")
+                })
+
+    model = get_embedding_model()
+    vectors = model.encode(texts, convert_to_numpy=True)
+
+    index = faiss.IndexFlatL2(VECTOR_DIM)
+    index.add(vectors)
+
+    # save faiss index
+    if not INDEX_PATH.parent.exists():
+        INDEX_PATH.parent.mkdir(parents=True)
+    faiss.write_index(index, str(INDEX_PATH))
+
+    # save metadata
+    import json
+    with open(META_PATH, "w", encoding="utf-8") as f:
+        json.dump(items, f, indent=2)
+
+    print("FAISS index built successfully.")
+    return index
+
+
+# AI faiss vector search
+@app.route("/api/ai/faiss_search", methods=["POST"])
+def api_ai_faiss_search():
+    query = (request.json or {}).get("query", "").strip()
+    if not query:
+        return jsonify({"error": "Query required"}), 400
+
+    if not FAISS_AVAILABLE or not INDEX_PATH.exists():
+        return jsonify({"error": "FAISS not installed or index missing"}), 500
+
+    import json
+    index = faiss.read_index(str(INDEX_PATH))
+    meta = json.load(open(META_PATH))
+
+    model = get_embedding_model()
+    q_vec = model.encode([query], convert_to_numpy=True)
+
+    k = 5  # top 5 matches
+    distances, ids = index.search(q_vec, k)
+
+    results = [meta[i] for i in ids[0]]
+    return jsonify(results)
+
+
 @app.route("/")
 def home():
     try:
         return render_template("main.html")
-    except:
+    except Exception:
         return "Citizen Portal API Running"
+
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
@@ -99,135 +260,36 @@ def admin_login():
         return render_template("admin_login.html", error="Invalid credentials")
     return render_template("admin_login.html")
 
+
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
     try:
         return render_template("newadmin.html")
-    except:
+    except Exception:
         return "Admin Dashboard"
+
 
 @app.route("/admin/logout")
 def admin_logout():
     session.pop("admin_logged_in", None)
     return redirect(url_for("admin_login"))
 
-# ----- Public APIs -----
+
+# ------------------ PUBLIC APIS ------------------
 @app.route("/api/services", methods=["GET"])
 def api_services():
     docs = list(services_col.find({}, {"_id": 0}))
     return jsonify(to_jsonable(docs))
 
-@app.route("/api/service/<service_id>", methods=["GET"])
-def api_service(service_id):
-    doc = services_col.find_one({"id": service_id}, {"_id": 0})
-    return jsonify(to_jsonable(doc or {}))
 
 @app.route("/api/categories", methods=["GET"])
 def api_categories():
     docs = list(categories_col.find({}, {"_id": 0}))
     return jsonify(to_jsonable(docs))
 
-# ----- Profile API -----
-@app.route("/api/profile/step", methods=["POST"])
-def profile_step():
-    data = request.get_json() or {}
-    step = data.get("step")
-    profile_id = data.get("profile_id")
-    profile_data = data.get("data") or {}
 
-    if step == "basic":
-        email = profile_data.get("email") or data.get("email")
-        if not email:
-            return jsonify({"error": "Email required"}), 400
-        res = db.profiles.insert_one({**profile_data, "created_at": datetime.utcnow()})
-        return jsonify({"status": "ok", "profile_id": str(res.inserted_id)})
-    elif profile_id:
-        db.profiles.update_one({"_id": ObjectId(profile_id)}, {"$set": profile_data})
-        return jsonify({"status": "ok"})
-    return jsonify({"error": "invalid request"}), 400
-
-# ----- AI search -----
-@app.route("/api/ai/search", methods=["POST"])
-def api_ai_search():
-    try:
-        payload = request.get_json() or {}
-        query_text = payload.get("query", "").strip()
-        if not query_text:
-            return jsonify({"error": "empty query"}), 400
-
-        results = []
-        for service in services_col.find({}, {"_id": 0}):
-            service_name = service.get("name", {}).get("en", "")
-            for sub in service.get("subservices", []):
-                sub_name = sub.get("name", {}).get("en", "")
-                for q in sub.get("questions", []):
-                    question_text = q.get("q", {}).get("en", "")
-                    answer_text = q.get("answer", {}).get("en", "")
-                    if query_text.lower() in (question_text + sub_name + service_name).lower():
-                        results.append({
-                            "service": service_name,
-                            "subservice": sub_name,
-                            "question": question_text,
-                            "answer": answer_text
-                        })
-        return jsonify(results)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
-# ----- Engagement logging -----
-# ----- User Engagements API for Recommendations -----
-@app.route("/api/engagement", methods=["GET"])
-def api_get_engagements():
-    """
-    Returns all engagement events. Optionally, filter by user_id via query param.
-    """
-    user_id = request.args.get("user_id")
-    query = {}
-    if user_id:
-        query["user_id"] = user_id
-
-    try:
-        docs = list(eng_col.find(query, {"_id": 0}))  # exclude MongoDB _id
-        return jsonify(to_jsonable(docs))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ----- GDPR / Data deletion -----
-@app.route("/api/user/delete", methods=["POST"])
-def delete_user_data():
-    payload = request.get_json() or {}
-    user_id = payload.get("user_id")
-    if not user_id:
-        return jsonify({"error": "user_id required"}), 400
-    eng_col.delete_many({"user_id": user_id})
-    return jsonify({"status": "deleted"})
-
-# ----- Ads API -----
-@app.route("/api/ads", methods=["GET"])
-def api_ads():
-    docs = list(ads_col.find({}, {"_id": 0}))
-    return jsonify(to_jsonable(docs))
-
-# ----- Admin CRUD endpoints -----
-@app.route("/api/admin/categories", methods=["POST"])
-@admin_required
-def admin_add_category():
-    try:
-        data = request.get_json() or {}
-        if not data.get("id") or not data.get("name"):
-            return jsonify({"error": "Missing required fields"}), 400
-        if categories_col.find_one({"id": data["id"]}):
-            return jsonify({"error": "Category id already exists"}), 400
-        res = categories_col.insert_one(data)
-        return jsonify({"status": "ok", "inserted_id": str(res.inserted_id)})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# ----- EXPORT ENGAGEMENT CSV -----
+# ------------------ EXPORT CSV ------------------
 @app.route("/api/admin/export_engagement_csv", methods=["GET"])
 @admin_required
 def export_engagement_csv():
@@ -235,8 +297,8 @@ def export_engagement_csv():
         cursor = eng_col.find()
         output = io.StringIO()
         writer = csv.writer(output)
-        # header
-        writer.writerow(["user_id", "age", "job", "desires", "question_clicked", "service", "ad", "source", "timestamp"])
+        writer.writerow(["user_id", "age", "job", "desires", "question_clicked",
+                         "service", "ad", "source", "timestamp"])
         for e in cursor:
             writer.writerow([
                 e.get("user_id"),
@@ -257,7 +319,14 @@ def export_engagement_csv():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ----- Startup -----
+
+# ------------------ STARTUP ------------------
 if __name__ == "__main__":
     create_default_admin()
+
+    # build FAISS index once at startup (optional)
+    if FAISS_AVAILABLE:
+        build_faiss_index()
+
+    # run local dev server
     app.run(debug=True, host="127.0.0.1", port=5000)
