@@ -283,10 +283,72 @@ def api_services():
     return jsonify(to_jsonable(docs))
 
 
-@app.route("/api/categories", methods=["GET"])
-def api_categories():
+@app.route("/api/categories", methods=["GET", "POST"])
+def get_categories():
+    if request.method == "POST":
+        data = request.json
+        print("POST data:", data)
+
+        # Validate
+        if not data or not data.get("id") or not data.get("name", {}).get("en"):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # Check duplicate
+        if categories_col.find_one({"id": data["id"]}):
+            return jsonify({"error": "Category ID already exists"}), 400
+
+        categories_col.insert_one(data)
+        return jsonify({"message": "Category added successfully"})
+
+    # GET: return categories
     docs = list(categories_col.find({}, {"_id": 0}))
-    return jsonify(to_jsonable(docs))
+    return jsonify(docs)
+
+@app.route("/api/officers", methods=["GET", "POST"])
+def api_officers():
+    if request.method == "POST":
+        data = request.json
+
+        if not data:
+            return jsonify({"error": "No JSON received"}), 400
+
+        required = ["id", "name", "role", "ministry_id", "email", "phone"]
+        for field in required:
+            if field not in data or not data[field].strip():
+                return jsonify({"error": f"Missing field: {field}"}), 400
+
+        # Insert into Mongo
+        officers_col.insert_one(data)
+        return jsonify({"message": "Officer added successfully!"}), 201
+
+    # GET = return list
+    return jsonify(list(officers_col.find({})))
+
+@app.route("/api/ads", methods=["GET", "POST"])
+def api_ads():
+    if request.method == "POST":
+        data = request.json or {}
+
+        # Validate
+        if not data.get("id") or not data.get("title"):
+            return jsonify({"error": "Missing required fields (id, title)"}), 400
+
+        # Prevent duplicate ad id
+        if ads_col.find_one({"id": data["id"]}):
+            return jsonify({"error": "Ad ID already exists"}), 400
+
+        ads_col.insert_one(data)
+        return jsonify({"message": "Ad added successfully"}), 201
+
+    # GET all ads
+    docs = list(ads_col.find({}, {"_id": 0}))
+    return jsonify(docs)
+
+
+
+
+
+
 
 
 # ------------------ EXPORT CSV ------------------

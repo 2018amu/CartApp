@@ -1,70 +1,124 @@
-/* General body and font */
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-    background-color: #f4f4f9;
-    color: #333;
-}
+/* ---------- General Reset ---------- */
 
-/* Headings */
-h1 {
-    text-align: center;
-    color: #2c3e50;
-}
-h2 {
-    margin-top: 20px;
-    color: #34495e;
-}
-
-/* Panel styling */
-.panel {
-    border: 1px solid #ccc;
-    padding: 20px;
-    margin-bottom: 20px;
-    border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-/* Input and select styling */
-.panel input, .panel select {
-    margin: 5px 0;
-    width: 100%;
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+* {
+    margin: 0;
+    padding: 0;
     box-sizing: border-box;
-}
-
-/* Buttons */
-.panel button {
-    margin-top: 10px;
-    padding: 10px 16px;
-    border-radius: 4px;
-    border: none;
-    cursor: pointer;
-    background-color: #3498db;
-    color: #fff;
-    font-size: 14px;
-    transition: background 0.3s ease;
-}
-
-.panel button:hover {
-    background-color: #2980b9;
-}
-
-/* Rebuild AI Index button */
-.rebuild-btn {
-    background-color: #2ecc71;
-}
-
-.rebuild-btn:hover {
-    background-color: #27ae60;
-}
-
-/* Result text */
-#cat-result, #off-result, #ad-result, #index-result {
-    margin-top: 10px;
-    font-weight: bold;
-    color: #e67e22;
-}
+    font-family: Arial, sans-serif;
+    }
+  
+  body {
+  background: #f4f6f8;
+  color: #333;
+  padding: 20px;
+  }
+  
+  /* ---------- Headings ---------- */
+  h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+  color: #2c3e50;
+  }
+  
+  h2 {
+  font-size: 20px;
+  margin-bottom: 15px;
+  color: #34495e;
+  }
+  
+  /* ---------- Panels ---------- */
+  .panel {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+  }
+  
+  .panel:hover {
+  transform: translateY(-2px);
+  }
+  
+  /* ---------- Panel Inputs ---------- */
+  .panel input[type="text"] {
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin: 6px 0;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  }
+  
+  /* ---------- Panel Buttons ---------- */
+  .panel button {
+  padding: 10px 18px;
+  margin-top: 10px;
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  background-color: #1abc9c;
+  color: #fff;
+  font-size: 14px;
+  transition: background-color 0.3s ease, transform 0.2s;
+  }
+  
+  .panel button:hover {
+  background-color: #16a085;
+  transform: translateY(-1px);
+  }
+  
+  /* ---------- Results Sections ---------- */
+  #cat-result, #off-result, #ad-result, #index-result {
+  margin-top: 15px;
+  padding: 12px;
+  background: #ecf0f1;
+  border-radius: 6px;
+  min-height: 40px;
+  }
+  
+  .cat-item, .ad-card {
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  
+  .cat-item:hover, .ad-card:hover {
+  background-color: #d1f0eb;
+  }
+  
+  /* ---------- Rebuild AI Button ---------- */
+  .rebuild-btn {
+  background-color: #3498db;
+  }
+  
+  .rebuild-btn:hover {
+  background-color: #2980b9;
+  }
+  
+  /* ---------- Links ---------- */
+  a {
+  color: #1abc9c;
+  text-decoration: none;
+  }
+  
+  a:hover {
+  text-decoration: underline;
+  }
+  
+  /* ---------- Responsive ---------- */
+  @media (max-width: 768px) {
+  .panel input[type="text"] {
+  width: 100%;
+  }
+  
+  
+  .panel button {
+      width: 100%;
+  }
+  
+  
+  }
+  

@@ -309,7 +309,7 @@ window.onload = async () => {
     const svcRes = await fetch("/api/services");
     services = await svcRes.json();
 
-    loadAds();
+   // loadAds();
 
     if (!localStorage.getItem("profile_done")) {
         showProfileModal();
