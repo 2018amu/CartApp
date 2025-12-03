@@ -28,12 +28,13 @@
         <input id="search-input" placeholder="Search services or ask a question..." />
         <button onclick="openChat()">Ask (AI)</button>
       </div>
-      <h2 id="q-title">Select Question</h2>
+      <!-- <button onclick="showProfileModal()">Open Profile Modal</button> -->
+      <h3 id="q-title"> please Select Question</h3>
       <ul id="question-list"></ul>
       <div id="answer-box"></div>
 
       <!-- Progressive profile modal -->
-      <div id="profile-modal" class="modal" style="display: none;">
+      <!-- <div id="profile-modal" class="modal" style="display: none;">
         <div class="modal-content">
           <h3 id="profile-step-title">Tell us about you</h3>
           <div id="profile-step-1" class="profile-step">
@@ -53,7 +54,39 @@
             <button onclick="profileSubmit()">Finish</button>
           </div>
         </div>
-      </div>
+      </div> -->
+      <!-- Button to open modal -->
+
+
+<!-- Profile Modal -->
+<div id="profile-modal" class="modal">
+  <div class="modal-content">
+    <h3 id="profile-step-title">Tell us about you</h3>
+
+    <!-- Step 1 -->
+    <div id="profile-step-1" class="profile-step">
+      <input id="p_name" placeholder="Full name" />
+      <input id="p_age" placeholder="Age" type="number" />
+      <button onclick="profileNext(1)">Next</button>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="profile-step-2" class="profile-step" style="display: none;">
+      <input id="p_email" placeholder="Email" />
+      <input id="p_phone" placeholder="Mobile" />
+      <button onclick="profileBack(2)">Back</button>
+      <button onclick="profileNext(2)">Next</button>
+    </div>
+
+    <!-- Step 3 -->
+    <div id="profile-step-3" class="profile-step" style="display: none;">
+      <input id="p_job" placeholder="Job role / workplace" />
+      <button onclick="profileBack(3)">Back</button>
+      <button onclick="profileSubmit()">Finish</button>
+    </div>
+  </div>
+</div>
+
     </main>
 
     <aside class="chat-panel" id="chat-panel">

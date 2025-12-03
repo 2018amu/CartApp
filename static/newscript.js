@@ -183,8 +183,77 @@ function appendChat(sender, text) {
     body.scrollTop = body.scrollHeight;
 }
 
+// function showProfileModal() {
+//     document.getElementById("profile-modal").style.display = "block";
+// }
+
+// function profileNext(step) {
+//     document.getElementById(`profile-step-${step}`).style.display = "none";
+//     document.getElementById(`profile-step-${step + 1}`).style.display = "block";
+// }
+
+// function profileBack(step) {
+//     document.getElementById(`profile-step-${step}`).style.display = "none";
+//     document.getElementById(`profile-step-${step - 1}`).style.display = "block";
+// }
+// async function profileSubmit() {
+//     try {
+//         const data1 = {
+//             name: document.getElementById("p_name").value,
+//             age: document.getElementById("p_age").value,
+//         };
+//         const data2 = {
+//             email: document.getElementById("p_email").value,
+//             phone: document.getElementById("p_phone").value,
+//         };
+//         const data3 = {
+//             job: document.getElementById("p_job").value
+//         };
+
+//         // STEP 1
+//         let res = await fetch("/api/profile/step", {
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({ step: "basic", data: { ...data1, email: data2.email } })
+//         });
+
+//         let j = await res.json();
+//         if (!j.profile_id) {
+//             alert("Error creating profile!");
+//             return;
+//         }
+
+//         profile_id = j.profile_id;
+
+//         // STEP 2
+//         await fetch("/api/profile/step", {
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({ profile_id, step: "contact", data: data2 })
+//         });
+
+//         // STEP 3
+//         await fetch("/api/profile/step", {
+//             method: "POST",
+//             headers: { "Content-Type": "application/json" },
+//             body: JSON.stringify({ profile_id, step: "employment", data: data3 })
+//         });
+
+//         document.getElementById("profile-modal").style.display = "none";
+//         localStorage.setItem("profile_done", "1");
+//         alert("Profile saved successfully!");
+
+//         loadRecommendedServices();
+
+//     } catch (err) {
+//         console.error("Profile error:", err);
+//         alert("Error saving profile!");
+//     }
+// }
+
+
 function showProfileModal() {
-    document.getElementById("profile-modal").style.display = "block";
+    document.getElementById("profile-modal").style.display = "flex";
 }
 
 function profileNext(step) {
@@ -196,6 +265,7 @@ function profileBack(step) {
     document.getElementById(`profile-step-${step}`).style.display = "none";
     document.getElementById(`profile-step-${step - 1}`).style.display = "block";
 }
+
 async function profileSubmit() {
     try {
         const data1 = {
@@ -243,7 +313,9 @@ async function profileSubmit() {
         localStorage.setItem("profile_done", "1");
         alert("Profile saved successfully!");
 
-        loadRecommendedServices();
+        if (typeof loadRecommendedServices === "function") {
+            loadRecommendedServices();
+        }
 
     } catch (err) {
         console.error("Profile error:", err);
@@ -313,5 +385,12 @@ window.onload = async () => {
 
     if (!localStorage.getItem("profile_done")) {
         showProfileModal();
+    }
+};
+
+window.onclick = function(event) {
+    const modal = document.getElementById("profile-modal");
+    if (event.target === modal) {
+        modal.style.display = "none";
     }
 };
