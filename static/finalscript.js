@@ -332,7 +332,12 @@ async function sendChat() {
         if (data.result) {
             let answer = data.result.answer || data.result.body || data.result.description || JSON.stringify(data.result);
             appendChat("bot", answer, data.result.source || data.source);
-        } else {
+        } 
+       else if (data.answer) {
+        appendChat("bot", data.answer, "ai");
+    }
+    
+        else {
             appendChat("bot", "No answer found.", "hybrid");
         }
     } catch (err) {

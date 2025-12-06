@@ -1,124 +1,154 @@
-/* ---------- General Reset ---------- */
-
+/* ------------------------------
+   GLOBAL STYLING
+--------------------------------*/
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: Arial, sans-serif;
-    }
+    font-family: "Inter", sans-serif;
+  }
   
   body {
-  background: #f4f6f8;
-  color: #333;
-  padding: 20px;
+    background: #f3f6fa;
+    padding: 20px;
+    color: #2d3748;
   }
   
-  /* ---------- Headings ---------- */
-  h1 {
-  font-size: 28px;
-  margin-bottom: 20px;
-  color: #2c3e50;
+  /* ------------------------------
+     HEADER
+  --------------------------------*/
+  .topbar {
+    background: #0059ff;
+    color: white;
+    padding: 18px 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 14px rgba(0, 89, 255, 0.3);
   }
   
-  h2 {
-  font-size: 20px;
-  margin-bottom: 15px;
-  color: #34495e;
+  .topbar h1 {
+    font-size: 26px;
+    font-weight: 700;
   }
   
-  /* ---------- Panels ---------- */
+  /* ------------------------------
+     PANEL (CARD)
+  --------------------------------*/
   .panel {
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transition: transform 0.2s;
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    transition: 0.2s ease-in-out;
   }
   
   .panel:hover {
-  transform: translateY(-2px);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
   }
   
-  /* ---------- Panel Inputs ---------- */
-  .panel input[type="text"] {
-  width: calc(100% - 20px);
-  padding: 10px;
-  margin: 6px 0;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
+  .panel h2 {
+    margin-bottom: 18px;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   
-  /* ---------- Panel Buttons ---------- */
-  .panel button {
-  padding: 10px 18px;
-  margin-top: 10px;
-  cursor: pointer;
-  border: none;
-  border-radius: 6px;
-  background-color: #1abc9c;
-  color: #fff;
-  font-size: 14px;
-  transition: background-color 0.3s ease, transform 0.2s;
+  /* ------------------------------
+     FORM INPUTS
+  --------------------------------*/
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
   }
   
-  .panel button:hover {
-  background-color: #16a085;
-  transform: translateY(-1px);
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #cbd5e0;
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 15px;
+    transition: 0.2s ease-in-out;
   }
   
-  /* ---------- Results Sections ---------- */
-  #cat-result, #off-result, #ad-result, #index-result {
-  margin-top: 15px;
-  padding: 12px;
-  background: #ecf0f1;
-  border-radius: 6px;
-  min-height: 40px;
+  input:focus {
+    border-color: #0059ff;
+    box-shadow: 0 0 0 3px rgba(0, 89, 255, 0.25);
+    outline: none;
   }
   
-  .cat-item, .ad-card {
-  padding: 10px;
-  margin-bottom: 8px;
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  /* ------------------------------
+     BUTTONS
+  --------------------------------*/
+  .btn {
+    background: #0059ff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.25s ease;
+    margin-top: 5px;
   }
   
-  .cat-item:hover, .ad-card:hover {
-  background-color: #d1f0eb;
+  .btn:hover {
+    background: #0041c7;
+    box-shadow: 0 6px 16px rgba(0, 89, 255, 0.3);
   }
   
-  /* ---------- Rebuild AI Button ---------- */
   .rebuild-btn {
-  background-color: #3498db;
+    background: #ff9500;
   }
   
   .rebuild-btn:hover {
-  background-color: #2980b9;
+    background: #cc7700;
+    box-shadow: 0 6px 16px rgba(255, 149, 0, 0.35);
   }
   
-  /* ---------- Links ---------- */
-  a {
-  color: #1abc9c;
-  text-decoration: none;
+  /* ------------------------------
+     RESULT BOXES
+  --------------------------------*/
+  .result-box {
+    margin-top: 12px;
+    padding: 12px 15px;
+    background: #eef3ff;
+    border-left: 4px solid #0059ff;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none; /* You can display via JS */
   }
   
-  a:hover {
-  text-decoration: underline;
+  .result-box.success {
+    background: #e6ffed;
+    border-left-color: #00b341;
   }
   
-  /* ---------- Responsive ---------- */
-  @media (max-width: 768px) {
-  .panel input[type="text"] {
-  width: 100%;
+  .result-box.error {
+    background: #ffe6e6;
+    border-left-color: #ff2d2d;
   }
   
+  /* ------------------------------
+     RESPONSIVE
+  --------------------------------*/
+  @media (max-width: 600px) {
+    header h1 {
+      font-size: 20px;
+    }
   
-  .panel button {
+    .panel {
+      padding: 18px;
+    }
+  
+    .btn {
       width: 100%;
-  }
-  
-  
+    }
   }
   
