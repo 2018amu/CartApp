@@ -2,10 +2,11 @@ import os
 import json
 import numpy as np
 import pandas as pd
+import bcrypt
 from datetime import datetime
 from io import StringIO, BytesIO
 import csv
-from flask import Flask, jsonify, render_template, request, session, redirect, send_file
+from flask import Flask, jsonify, render_template, request, session, redirect, send_file,url_for
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -69,18 +70,19 @@ collection = chroma_client.get_or_create_collection(
     name="citizen_services", embedding_function=embedding_function
 )
 
-
-# --- Helpers ---
 def admin_required(fn):
     from functools import wraps
-
     @wraps(fn)
-    def wrapper(*a, **kw):
+    def wrapper(*args, **kwargs):
         if not session.get("admin_logged_in"):
-            return jsonify({"error": "unauthorized"}), 401
-        return fn(*a, **kw)
-
+            # If it's an API call → return JSON
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "unauthorized"}), 401
+            # If it's a normal page → redirect
+            return redirect(url_for("admin_login"))
+        return fn(*args, **kwargs)
     return wrapper
+
 
 
 # --- Public routes ---
@@ -123,23 +125,50 @@ def log_engagement():
 def admin_login_page():
     return render_template("admin.html")
 
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
 
-@app.route("/admin/login", methods=["POST"])
-def admin_login_api():
-    data = request.get_json()  # Frontend must send JSON
-    if not data:
-        return jsonify({"status": "failed", "message": "No JSON received"}), 400
+        data = request.get_json(silent=True) or request.form or {}
 
-    username = data.get("username")
-    password = data.get("password")
+        username = data.get("username", "").strip()
+        password = data.get("password", "").strip()
 
-    admin = admins_col.find_one({"username": username})
-    if admin and admin.get("password") == password:
-        session["admin_logged_in"] = True
-        session["admin_user"] = username
-        return jsonify({"status": "ok"})
+        admin = admins_col.find_one({"username": username})
+        if not admin:
+            return jsonify({"error": "Invalid username or password"}), 401
 
-    return jsonify({"status": "failed", "message": "Login failed"}), 401
+        stored_hash = admin.get("password")
+
+        # Convert stored hash into bytes if needed
+        if isinstance(stored_hash, str):
+            stored_hash = stored_hash.encode("utf-8")
+
+        # Convert input password into bytes
+        password_bytes = password.encode("utf-8")
+
+        # Validate password
+        if bcrypt.checkpw(password_bytes, stored_hash):
+            session["admin_logged_in"] = True
+            return jsonify({"message": "ok"}), 200
+
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    # If GET → show login page
+    return render_template("admin_login.html")
+
+def create_default_admin():
+    admin = admins_col.find_one({"username": "admin"})
+    if not admin:
+        pwd = os.getenv("ADMIN_PWD", "admin123")
+        hashed = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt())
+        admins_col.insert_one({
+            "username": "admin",
+            "password": hashed
+        })
+        print("✔ Default admin created (admin / admin123)")
+
+
 
 
 @app.route("/api/admin/logout", methods=["POST"])

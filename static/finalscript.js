@@ -13,6 +13,47 @@ function setLang(l) {
   loadCategories();
 }
 
+function sendChatAIOnly() {
+  const input = document.getElementById("chat-text");
+  const text = input.value.trim();
+
+  if (!text) {
+    showResult("chat-result", "Please type a message", "error");
+    return;
+  }
+
+  showResult("chat-result", "Thinking...", "loading");
+
+  fetch("/api/ai/ai_only_search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: text }),
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.results && data.results[0] && data.results[0].answer) {
+        showResult("chat-result", data.results[0].answer, "success");
+      } else {
+        showResult("chat-result", "No response from AI", "error");
+      }
+    })
+    .catch(err => {
+      showResult("chat-result", err.message || "AI request failed", "error");
+    });
+}
+
+// simple helper for displaying results
+function showResult(id, msg, type = "info") {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerText = msg;
+  el.style.color =
+    type === "error" ? "red" :
+    type === "success" ? "green" :
+    type === "loading" ? "blue" : "black";
+}
+
+
 // -----------------------------
 // LOAD CATEGORIES
 // -----------------------------
@@ -161,157 +202,7 @@ async function loadAds() {
   }
 }
 
-// -----------------------------
-// CHAT PANEL
-// -----------------------------
-// function openChat() {
-//     const panel = document.getElementById("chat-panel");
-//     panel.style.display = "flex"; // must match flex in CSS
-// }
-
-// function closeChat() {
-//     const panel = document.getElementById("chat-panel");
-//     panel.style.display = "none";
-// }
-
-// // -----------------------------
-// // HYBRID AI SEARCH CHAT
-// // -----------------------------
-// async function sendChat() {
-//     const input = document.getElementById("chat-text");
-//     const text = input.value.trim();
-//     if (!text) return;
-
-//     appendChat("user", text);
-//     input.value = "";
-
-//     try {
-//         // const res = await fetch("/api/ai/search", {
-//         //     method: "POST",
-//         //     headers: { "Content-Type": "application/json" },
-//         //     body: JSON.stringify({ query: text })
-//         // });
-
-//         // const data = await res.json();
-//         const res = await fetch("/api/ai/search", {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify({ query: text, top_k: 5 })
-//         });
-//         const data = await res.json();
-//         appendChat("bot", data.answer || JSON.stringify(data.results));
-
-//         let reply = "";
-
-//         if (data.results?.length > 0) {
-//             reply += "🔍 **Related Information:\n\n**";
-//             data.results.forEach((r, i) => {
-//                 reply += `${i + 1}. ${r.text || r.answer || r.question || JSON.stringify(r)}\n\n`;
-//             });
-//         } else {
-//             reply = "❌ No related information found.";
-//         }
-
-//         appendChat("bot", reply);
-
-//     } catch (err) {
-//         appendChat("bot", "AI service unavailable.");
-//     }
-
-//     // Engagement logging
-//     fetch("/api/engagement", {
-//         method: "POST",
-//         headers: { "Content-Type": "application/json" },
-//         body: JSON.stringify({ user_id: profile_id, question_clicked: text, service: null })
-//     });
-// }
-
-// function appendChat(sender, text, isHtml = false) {
-//     const body = document.getElementById("chat-body");
-//     if (!body) return;
-
-//     const div = document.createElement("div");
-//     div.className = "chat-msg " + (sender === "user" ? "user-msg" : "bot-msg");
-//     if (isHtml) div.innerHTML = text;
-//     else div.textContent = text;
-
-//     body.appendChild(div);
-
-//     // scroll into view
-//     div.scrollIntoView({ behavior: "smooth", block: "end" });
-// }
-// const chatBody = document.getElementById("chat-body");
-// new MutationObserver(() => {
-//     chatBody.scrollTop = chatBody.scrollHeight;
-// }).observe(chatBody, { childList: true });
-// Append chat message
-// function appendChat(sender, text, source = "") {
-//   const body = document.getElementById("chat-body");
-//   const div = document.createElement("div");
-
-//   div.className = "chat-msg " + (sender === "user" ? "user-msg" : "bot-msg");
-
-//   if (sender === "bot") {
-//     // Show source if available
-//     div.innerHTML = source
-//       ? `<span class="chat-source">[${source.toUpperCase()}]</span>: ${text}`
-//       : text;
-//   } else {
-//     div.innerText = text;
-//   }
-
-//   body.appendChild(div);
-//   body.scrollTop = body.scrollHeight; // Auto-scroll
-// }
-
-// Send chat message to hybrid endpoint
-// async function sendChat() {
-//     const input = document.getElementById("chat-text");
-//     const text = input.value.trim();
-//     if (!text) return;
-
-//     appendChat("user", text);
-//     input.value = "";
-
-//     try {
-//         const res = await fetch("/api/ai/search", {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify({ query: text, top_k: 5 })
-//         });
-
-//         const data = await res.json();
-
-//         if (data.results && data.results.length > 0) {
-//             // Show each result with proper source label
-//             data.results.forEach(r => {
-//                 let answer = r.answer || r.body || r.description || "";
-//                 let display = answer || JSON.stringify(r);
-//                 let source = r.source || "hybrid";
-//                 appendChat("bot", display, source);
-//             });
-//         } else if (data.answer) {
-//             appendChat("bot", data.answer, data.source || "ai");
-//         } else {
-//             appendChat("bot", "No results found.", "hybrid");
-//         }
-//     } catch (err) {
-//         appendChat("bot", "AI service unavailable.", "error");
-//         console.error(err);
-//     }
-
-//     // Engagement logging
-//     if (profile_id) {
-//         fetch("/api/engagement", {
-//             method: "POST",
-//             headers: { "Content-Type": "application/json" },
-//             body: JSON.stringify({ user_id: profile_id, question_clicked: text, service: null })
-//         });
-//     }
-// }
-
-
-
+//Chat interface
 async function sendChat() {
     const input = document.getElementById("chat-text");
     const text = input.value.trim();
@@ -345,48 +236,6 @@ async function sendChat() {
         console.error(err);
     }
 }
-async function sendAIOnlyChat() {
-    const input = document.getElementById("chat-text");
-    const text = input.value.trim();
-    if (!text) return;
-
-    appendChat("user", text);
-    input.value = "";
-
-    try {
-        const res = await fetch("/api/ai/ai_only_search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query: text })
-        });
-
-        const data = await res.json();
-
-        if (data.results && data.results.length > 0) {
-            // Always display only the first and most accurate answer
-            const answerObj = data.results[0];
-            const answerText = answerObj.answer || "No answer available.";
-            appendChat("bot", answerText, answerObj.source || "ai");
-        } else {
-            appendChat("bot", "No answer available.", "ai");
-        }
-
-    } catch (err) {
-        appendChat("bot", "AI service unavailable.", "error");
-        console.error(err);
-    }
-
-    // Optional: Engagement logging
-    if (profile_id) {
-        fetch("/api/engagement", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: profile_id, question_clicked: text, service: "ai_only" })
-        });
-    }
-}
-
-
 
 // ---------------- Helper to append messages ----------------
 function appendChat(sender, message, source = "") {

@@ -1,4 +1,3 @@
-# app.py — Hybrid FAISS + AI citizen portal (complete)
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
 from flask_cors import CORS
 from flask_session import Session
@@ -108,7 +107,6 @@ def admin_required(fn):
 
 # ---------------- Embedding model ----------------
 
-
 def get_embedding_model():
     global EMBED_MODEL
     if EMBED_MODEL is None:
@@ -128,7 +126,6 @@ def get_embedding_model():
 # ---------------- OpenAI helper ----------------
 if OPENAI_AVAILABLE and OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
-
 
 def run_ai_simple(query: str):
     try:
@@ -154,7 +151,7 @@ def ask_ai(query):
         return None
     try:
         # using chat completion for best short answers
-        resp = openai.ChatCompletion.create(
+        resp = openai.chat.completions.create(...)(
             model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
             messages=[{"role": "user", "content": query}],
             temperature=0.2,
@@ -164,57 +161,6 @@ def ask_ai(query):
     except Exception as e:
         logger.exception("OpenAI call failed: %s", e)
         return None
-
-# ---------------- FAISS index builder & loader ----------------
-
-
-# def build_faiss_index():
-#     if not FAISS_AVAILABLE:
-#         logger.warning("FAISS not available; cannot build index.")
-#         return False
-
-#     # collect texts + metadata
-#     services = list(services_col.find({}, {"_id": 0}))
-#     texts = []
-#     items = []
-#     for service in services:
-#         svc_name = service.get("name", {}).get("en", "") or ""
-#         for sub in service.get("subservices", []) or []:
-#             sub_name = sub.get("name", {}).get("en", "") or ""
-#             for q in sub.get("questions", []) or []:
-#                 q_text = q.get("q", {}).get("en", "") or ""
-#                 combined = " ".join([svc_name, sub_name, q_text]).strip()
-#                 texts.append(combined)
-#                 items.append({
-#                     "service": svc_name,
-#                     "subservice": sub_name,
-#                     "question": q_text,
-#                     "answer": q.get("answer", {}).get("en", "")
-#                 })
-
-#     if len(texts) == 0:
-#         logger.info("No texts found to index.")
-#         return False
-
-#     try:
-#         model = get_embedding_model()
-#         vectors = model.encode(texts, convert_to_numpy=True)
-
-#         index = faiss.IndexFlatL2(VECTOR_DIM)
-#         index.add(vectors)
-
-#         if not INDEX_PATH.parent.exists():
-#             INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-#         faiss.write_index(index, str(INDEX_PATH))
-#         with open(META_PATH, "w", encoding="utf-8") as f:
-#             json.dump(items, f, indent=2, ensure_ascii=False)
-
-#         logger.info("FAISS index built: %s (%d items)", INDEX_PATH, len(items))
-#         return True
-#     except Exception as e:
-#         logger.exception("Failed to build FAISS index: %s", e)
-#         return False
 
 def build_faiss_index():
     if not FAISS_AVAILABLE:
@@ -236,7 +182,7 @@ def build_faiss_index():
                 q_text = q.get("q", {}).get("en", "") or ""
                 a_text = q.get("answer", {}).get("en", "") or ""
 
-                # 🔥 MUST include answer text for proper semantic search
+                #  MUST include answer text for proper semantic search
                 combined = " ".join([
                     svc_name,
                     sub_name,
@@ -308,7 +254,7 @@ _index, _meta = load_faiss_index()
 @app.route("/")
 def home():
     try:
-        return render_template("main.html")
+        return render_template("mainfaiss.html")
     except Exception:
         return "Citizen Portal API Running"
 
@@ -341,7 +287,7 @@ def admin_login():
 @admin_required
 def admin_dashboard():
     try:
-        return render_template("newadmin.html")
+        return render_template("faissadmin.html")
     except Exception:
         return "Admin Dashboard"
 
@@ -538,202 +484,6 @@ def api_ai_faiss_search():
         logger.exception("FAISS search failed: %s", e)
         return jsonify({"error": "FAISS search failed", "details": str(e)}), 500
 
-# ---------------- HYBRID SEARCH (FAISS -> OpenAI -> DB text fallback) ----------------
-# @app.route("/api/ai/search", methods=["GET", "POST"])
-# def api_ai_search():
-#     """
-#     POST: JSON { query: "...", top_k: 5 }
-#     GET: returns simple JSON explaining usage (avoids browser 404 confusion)
-#     """
-#     if request.method == "GET":
-#         return jsonify({"info": "POST JSON {query:'...', top_k:5} to this endpoint"}), 200
-
-#     data = request.get_json(silent=True) or {}
-#     query = (data.get("query") or "").strip()
-#     top_k = int(data.get("top_k", 5))
-
-#     if not query:
-#         return jsonify({"error": "Query required"}), 400
-
-#     # 1) FAISS
-#     idx, meta = load_faiss_index()
-#     if idx is not None and meta:
-#         try:
-#             model = get_embedding_model()
-#             q_vec = model.encode([query], convert_to_numpy=True)
-#             distances, ids = idx.search(q_vec, max(1, top_k))
-#             faiss_results = []
-#             for i, d in zip(ids[0], distances[0]):
-#                 if i != -1 and i < len(meta):
-#                     item = meta[i].copy()
-#                     item["distance"] = float(d)
-#                     faiss_results.append(item)
-#             if faiss_results:
-#                 return jsonify({"source": "faiss", "query": query, "results": faiss_results})
-#         except Exception as e:
-#             logger.exception("FAISS search error, falling back: %s", e)
-
-#     # 2) OpenAI fallback (if available)
-#     ai_answer = ask_ai(query)
-#     if ai_answer:
-#         return jsonify({"source": "ai", "query": query, "answer": ai_answer})
-
-#     # 3) Text-based DB fallback (search service names, descriptions, question text)
-#     q = {"$regex": query, "$options": "i"}
-#     service_hits = list(services_col.find(
-#         {"$or": [
-#             {"name.en": q},
-#             {"name": q},
-#             {"description": q},
-#         ]},
-#         {"_id": 0}
-#     ))
-#     # scan questions embedded in services (if any)
-#     question_hits = []
-#     for svc in services_col.find({}, {"_id": 0}):
-#         svc_name = svc.get("name", {}).get("en", "")
-#         for sub in svc.get("subservices", []) or []:
-#             for qobj in sub.get("questions", []) or []:
-#                 qtext = qobj.get("q", {}).get("en", "")
-#                 if qtext and query.lower() in qtext.lower():
-#                     question_hits.append({
-#                         "service": svc_name,
-#                         "subservice": sub.get("name", {}).get("en", ""),
-#                         "question": qtext,
-#                         "answer": qobj.get("answer", {}).get("en", "")
-#                     })
-
-#     final = service_hits + question_hits
-#     return jsonify({"source": "db", "query": query, "results": final})
-# //api_ai_search
-
-
-# @app.route("/api/ai/search", methods=["GET", "POST"])
-# def api_ai_search():
-#     """
-#     Hybrid AI Search
-#     Priority:
-#     1. FAISS semantic search
-#     2. Keyword DB search
-#     3. AI answer (OpenAI fallback)
-#     GET returns usage info
-#     """
-
-#     # ---- GET REQUEST (avoid browser 404) ----
-#     if request.method == "GET":
-#         return jsonify({
-#             "info": "Use POST with JSON: { query: 'text', top_k: 5 }"
-#         }), 200
-
-#     # ---- Parse input ----
-#     data = request.get_json(silent=True) or {}
-#     query = (data.get("query") or "").strip()
-#     top_k = int(data.get("top_k", 5))
-
-#     if not query:
-#         return jsonify({"error": "Query required"}), 400
-
-#     # ==========================================================
-#     # 1️⃣  FAISS SEMANTIC SEARCH (main accurate method)
-#     # ==========================================================
-#     try:
-#         idx, meta = load_faiss_index()
-#         if idx is not None and meta:
-#             model = get_embedding_model()
-#             q_vec = model.encode([query], convert_to_numpy=True)
-
-#             distances, ids = idx.search(q_vec, max(1, top_k))
-
-#             results = []
-#             for i, d in zip(ids[0], distances[0]):
-#                 if i != -1 and i < len(meta):
-#                     item = meta[i].copy()
-#                     item["score"] = float(d)
-#                     item["source"] = "faiss"
-#                     results.append(item)
-
-#             # Return FAISS results if exist
-#             if results:
-#                 return jsonify({
-#                     "source": "faiss",
-#                     "query": query,
-#                     "results": results
-#                 }), 200
-
-#     except Exception as e:
-#         app.logger.exception("FAISS error: %s", e)
-
-#     # ==========================================================
-#     # 2️⃣  KEYWORD DB FALLBACK
-#     # ==========================================================
-#     try:
-#         q_regex = {"$regex": query, "$options": "i"}
-
-#         # Search services by name & description
-#         service_hits = list(services_col.find(
-#             {
-#                 "$or": [
-#                     {"name.en": q_regex},
-#                     {"description": q_regex}
-#                 ]
-#             },
-#             {"_id": 0}
-#         ))
-
-#         # Search inside Q&A
-#         question_hits = []
-#         for svc in services_col.find({}, {"_id": 0}):
-#             svc_name = svc.get("name", {}).get("en", "")
-#             for sub in svc.get("subservices", []) or []:
-#                 sub_name = sub.get("name", {}).get("en", "")
-#                 for qobj in sub.get("questions", []) or []:
-#                     q_text = qobj.get("q", {}).get("en", "")
-#                     a_text = qobj.get("answer", {}).get("en", "")
-
-#                     if query.lower() in (q_text + " " + a_text).lower():
-#                         question_hits.append({
-#                             "service": svc_name,
-#                             "subservice": sub_name,
-#                             "question": q_text,
-#                             "answer": a_text,
-#                             "source": "db"
-#                         })
-
-#         final_db = service_hits + question_hits
-
-#         if final_db:
-#             return jsonify({
-#                 "source": "db",
-#                 "query": query,
-#                 "results": final_db
-#             }), 200
-
-#     except Exception as e:
-#         app.logger.exception("DB backup search error: %s", e)
-
-#     # ==========================================================
-#     # 3️⃣  AI LAST RESORT (only when nothing in FAISS/DB)
-#     # ==========================================================
-#     try:
-#         ai_answer = ask_ai(query)
-#         if ai_answer:
-#             return jsonify({
-#                 "source": "ai",
-#                 "query": query,
-#                 "answer": ai_answer
-#             }), 200
-#     except Exception as e:
-#         app.logger.exception("AI error: %s", e)
-
-#     # ==========================================================
-#     # 4️⃣  NOTHING FOUND
-#     # ==========================================================
-#     return jsonify({
-#         "source": "none",
-#         "query": query,
-#         "results": [],
-#         "message": "No information found in FAISS, database, or AI."
-#     }), 200
 
 def rebuild_index():
     """
@@ -756,7 +506,9 @@ def api_ai_rebuild():
         print("INDEX ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
-    # /api/engagement    
+    # /api/engagement
+
+
 @app.route("/api/engagement", methods=["POST"])
 def create_or_filter_engagement():
     try:
@@ -771,7 +523,6 @@ def create_or_filter_engagement():
     except Exception as e:
         logger.exception("Failed to process engagements: %s", e)
         return jsonify({"ok": False, "error": str(e)}), 500
-
 
 
 @app.route("/api/ai/search", methods=["GET", "POST"])
@@ -926,16 +677,17 @@ def ai_only_search():
         }]
     }), 200
 
+
 @app.route("/api/engagement", methods=["GET"])
 def get_engagements():
     try:
         # Fetch all engagements
-        data = list(eng_col.find({}, {"_id": 0}))  # exclude _id or convert as needed
+        # exclude _id or convert as needed
+        data = list(eng_col.find({}, {"_id": 0}))
         return jsonify({"ok": True, "data": data})
     except Exception as e:
         logger.exception("Failed to load engagements: %s", e)
         return jsonify({"ok": False, "error": str(e)}), 500
-
 
 
 # ----------------- HELPER FUNCTION -----------------

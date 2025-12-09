@@ -1,54 +1,84 @@
 document.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("login-form");
+
   if (loginForm) {
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
 
-      const data = {
-        username: document.getElementById("username").value.trim(),
-        password: document.getElementById("password").value.trim()
-      };
-
-      if (!data.username || !data.password) {
-        alert("Please enter username and password.");
-        return;
-      }
+      const formData = new FormData();
+      formData.append("username", document.getElementById("username").value.trim());
+      formData.append("password", document.getElementById("password").value.trim());
 
       try {
         const res = await fetch("/admin/login", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
+          body: formData         // <-- IMPORTANT FIX
         });
 
-        const result = await res.json();
-
-        if (res.ok && result.status === "ok") {
-          loadDashboard(); // load admin dashboard
-        } else {
-          alert(result.message || "Login failed");
+        // If login succeeds Flask redirects → so check redirect
+        if (res.redirected) {
+          window.location = res.url;
+          return;
         }
+
+        const html = await res.text();
+        if (html.includes("Invalid credentials")) {
+          alert("Invalid username or password.");
+        }
+
       } catch (err) {
         console.error("Login error:", err);
-        alert("Login request failed.");
+        alert("Login failed.");
       }
     };
   }
 
-  // Logout button
-  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-    await fetch("/api/admin/logout", { method: "POST" });
-    window.location.reload();
-  });
-
-  // Export CSV
-  document.getElementById("exportCsv")?.addEventListener("click", () => {
-    window.location = "/api/admin/export_csv";
-  });
-
-  // Load dashboard if already logged in
+  // Load dashboard after login
   loadDashboard();
 });
+
+async function loadDashboard() {
+  const dashEl = document.getElementById("dashboard");
+
+  try {
+    const r = await fetch("/api/admin/insights");
+
+    if (r.status === 401) {
+      document.getElementById("login-box").style.display = "block";
+      dashEl.style.display = "none";
+      return;
+    }
+
+    const data = await r.json();
+    document.getElementById("login-box").style.display = "none";
+    dashEl.style.display = "block";
+
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// async function loadDashboard() {
+//   const dashEl = document.getElementById("dashboard");
+
+//   try {
+//     const r = await fetch("/api/admin/insights");
+
+//     if (r.status === 401) {
+//       document.getElementById("login-box").style.display = "block";
+//       dashEl.style.display = "none";
+//       return;
+//     }
+
+//     const data = await r.json();
+//     document.getElementById("login-box").style.display = "none";
+//     dashEl.style.display = "block";
+
+//   } catch (err) {
+//     console.error(err);
+//   }
+// }
+
 
 async function loadDashboard() {
   const dashEl = document.getElementById("dashboard");
