@@ -13,6 +13,9 @@ function setLang(l) {
   loadCategories();
 }
 
+let currentQuestion = null;   // Stores the active question user is answering
+
+
 function sendChatAIOnly() {
   const input = document.getElementById("chat-text");
   const text = input.value.trim();
@@ -52,6 +55,12 @@ function showResult(id, msg, type = "info") {
     type === "success" ? "green" :
     type === "loading" ? "blue" : "black";
 }
+
+function loadNextQuestion(question) {
+  currentQuestion = question;   // <-- IMPORTANT
+  document.getElementById("question-text").innerText = question.text;
+}
+
 
 
 // -----------------------------
@@ -154,7 +163,7 @@ function saveExtendedProfile() {
     personalized_ads: document.getElementById("personalized_ads")?.checked || false,
     data_analytics: document.getElementById("data_analytics")?.checked || false
   };
-
+  // /api/profile/extended
   fetch("/api/profile/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -461,6 +470,80 @@ window.onload = async () => {
     showProfileModal();
   }
 };
+
+document.getElementById("engagement-btn").addEventListener("click", sendEngagementData);
+
+let clickEvents = [];
+let searchHistory = [];
+
+document.addEventListener("click", (e) => {
+    clickEvents.push({
+        element: e.target.tagName,
+        id: e.target.id || null,
+        time: Date.now()
+    });
+});
+
+function trackSearch(query) {
+    searchHistory.push({
+        text: query,
+        time: Date.now()
+    });
+}
+
+
+function sendEngagementData() {
+
+  // --- FIX 1: Prevent error if currentQuestion is undefined ---
+  const clickedQuestion = (typeof currentQuestion === "object" && currentQuestion !== null)
+      ? currentQuestion.text || null
+      : null;
+
+  const payload = {
+      user_id: document.getElementById("profile_id").value || null,
+      session_id: crypto.randomUUID(),
+
+      // Profile fields
+      age: document.getElementById("p_age")?.value || null,
+      job: document.getElementById("p_job")?.value || null,
+
+      desires: ["more info", "quick service"],
+
+      // --- FIX 2: send only question text, never full object ---
+      question_clicked: clickedQuestion,
+
+      service: currentServiceName || null,
+      ad: "sidebar_ad_1",
+      source: "portal_ui",
+
+      time_spent: Math.floor(performance.now() / 1000),
+      scroll_depth: window.scrollY,
+      clicks: clickEvents || [],
+      searches: searchHistory || [],
+
+      screen_resolution: `${window.innerWidth}x${window.innerHeight}`,
+
+      utm_source: "portal",
+      utm_medium: "button",
+      utm_campaign: "engagement_test"
+  };
+
+  fetch("/api/engagement/enhanced", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+      alert("Engagement stored: " + JSON.stringify(data));
+  })
+  .catch(err => {
+      console.error(err);
+      alert("Error: " + err.message);
+  });
+}
+
+
 
 // -----------------------------
 // CLOSE MODAL ON OUTSIDE CLICK

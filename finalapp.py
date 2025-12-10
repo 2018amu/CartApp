@@ -425,64 +425,6 @@ def api_ads():
     # Add to existing users_col schema
 
 
-# @app.route("/api/profile/extended", methods=["POST"])
-# def extended_profile():
-#     payload = request.json or {}
-#     profile_id = payload.get("profile_id")
-
-#     if not profile_id:
-#         return jsonify({"error": "profile_id required"}), 400
-
-#     # Validate ObjectId
-#     try:
-#         profile_obj_id = ObjectId(profile_id)
-#     except bson_errors.InvalidId:
-#         return jsonify({"error": "Invalid profile_id format"}), 400
-
-#     extended_data = {
-#         "family": {
-#             "marital_status": payload.get("marital_status"),
-#             "children": payload.get("children", []),
-#             "children_ages": payload.get("children_ages", []),
-#             "children_education": payload.get("children_education", []),
-#             "dependents": payload.get("dependents", 0)
-#         },
-#         "education": {
-#             "highest_qualification": payload.get("highest_qualification"),
-#             "institution": payload.get("institution"),
-#             "year_graduated": payload.get("year_graduated"),
-#             "field_of_study": payload.get("field_of_study")
-#         },
-#         "career": {
-#             "current_job": payload.get("current_job"),
-#             "years_experience": payload.get("years_experience"),
-#             "skills": payload.get("skills", []),
-#             "career_goals": payload.get("career_goals", [])
-#         },
-#         "interests": {
-#             "hobbies": payload.get("hobbies", []),
-#             "learning_interests": payload.get("learning_interests", []),
-#             "service_preferences": payload.get("service_preferences", [])
-#         },
-#         "consent": {
-#             "marketing_emails": payload.get("marketing_emails", False),
-#             "personalized_ads": payload.get("personalized_ads", False),
-#             "data_analytics": payload.get("data_analytics", False)
-#         }
-#     }
-
-#     try:
-#         result = newusers_col.update_one(
-#             {"_id": profile_obj_id},
-#             {"$set": {"extended_profile": extended_data}}
-#         )
-#         if result.matched_count == 0:
-#             return jsonify({"error": "Profile not found"}), 404
-#     except Exception as e:
-#         return jsonify({"error": str(e)}), 500
-
-#     return jsonify({"status": "ok"})
-
 @app.route("/api/profile/extended", methods=["POST"])
 def extended_profile():
     payload = request.json or {}
@@ -544,7 +486,9 @@ def extended_profile():
 
     return jsonify({"status": "ok"})
 
-# add new user
+# add new user  (/api/profile/extended)
+
+
 @app.route("/api/profile/create", methods=["POST"])
 def create_profile():
     payload = request.json or {}
@@ -592,7 +536,8 @@ def create_profile():
             if user:
                 newusers_col.update_one(
                     {"_id": user_obj_id},
-                    {"$set": {"extended_profile": extended_data, "updated": datetime.utcnow()}}
+                    {"$set": {"extended_profile": extended_data,
+                              "updated": datetime.utcnow()}}
                 )
                 return jsonify({"status": "ok", "user_id": str(user_obj_id)})
         except Exception:
@@ -610,9 +555,6 @@ def create_profile():
     }
     result = newusers_col.insert_one(new_doc)
     return jsonify({"status": "ok", "user_id": str(result.inserted_id)})
-
-
-
 
 # Enhanced engagement logging
 
