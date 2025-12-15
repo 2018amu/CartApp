@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_session import Session
 from pymongo import MongoClient
 from bson import ObjectId, Binary, errors as bson_errors
-from datetime import datetime
+from datetime import datetime,timedelta
 from recommendation_engine import RecommendationEngine
 import bcrypt
 import os
@@ -16,6 +16,7 @@ import pathlib
 import numpy as np
 import json
 import logging
+import re
 
 
 # Optional packages
@@ -87,11 +88,224 @@ products_col=db["products"]
 orders_col=["orders"]
 payments_col=["payments"]
 
-# ///api/store/products
+# ///api/dashboard/analytics
+
+def build_dashboard_analytics():
+    now = datetime.utcnow()
+
+    # User metrics
+    total_users = newusers_col.count_documents({})
+    active_users = newusers_col.count_documents({
+        "last_active": {"$gte": now - timedelta(days=30)}
+    })
+    new_users_7d = newusers_col.count_documents({
+        "created": {"$gte": now - timedelta(days=7)}
+    })
+
+    # Engagement metrics
+    total_engagements = eng_col.count_documents({})
+    recent_engagements = eng_col.count_documents({
+        "timestamp": {"$gte": now - timedelta(days=7)}
+    })
+
+    # Store metrics
+    total_orders = orders_col.count_documents({})
+    revenue_cursor = payments_col.aggregate([
+        {"$match": {"status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ])
+    revenue_result = list(revenue_cursor)
+    total_revenue_amount = revenue_result[0]["total"] if revenue_result else 0
+
+    # User segmentation (optional, demo)
+    user_segments = {}
+    for user in newusers_col.find({}):
+        segments = user.get("extended_profile", {}).get("interests", {}).get("service_preferences", [])
+        for segment in segments:
+            user_segments[segment] = user_segments.get(segment, 0) + 1
+
+    # Recent activities
+    recent_activities = list(eng_col.find().sort("timestamp", -1).limit(10))
+
+    return {
+        "user_metrics": {
+            "total_users": total_users,
+            "active_users": active_users,
+            "new_users_7d": new_users_7d
+        },
+        "engagement_metrics": {
+            "total_engagements": total_engagements,
+            "recent_engagements": recent_engagements
+        },
+        "store_metrics": {
+            "total_orders": total_orders,
+            "total_revenue": total_revenue_amount,
+            "conversion_rate": "3.2%"
+        },
+        "user_segments": user_segments,
+        "recent_activities": recent_activities
+    }
+
+# -----------------------------
+# Route: dashboard page
+# -----------------------------
+@app.route("/dashboard")
+def dashboard():
+    analytics = build_dashboard_analytics()
+
+    return render_template(
+        "dashboard.html",
+        analytics=analytics,
+        total_users=analytics["user_metrics"]["total_users"],
+        total_engagements=analytics["engagement_metrics"]["total_engagements"]
+    )
+
+# -----------------------------
+# Route: analytics API (optional)
+# -----------------------------
+@app.route("/api/dashboard/analytics", methods=["GET"])
+def get_dashboard_analytics():
+    return jsonify(build_dashboard_analytics())
 
 
-import re
+@app.route("/api/dashboard/analytics", methods=["GET"])
+def get_dashboard_analytics():
+    now = datetime.utcnow()
 
+    # -----------------------------
+    # USER ANALYTICS
+    # -----------------------------
+    total_users = newusers_col.count_documents({})
+
+    active_users = newusers_col.count_documents({
+        "last_active": {"$gte": now - timedelta(days=30)}
+    })
+
+    new_users_7d = newusers_col.count_documents({
+        "created": {"$gte": now - timedelta(days=7)}
+    })
+
+    # -----------------------------
+    # ENGAGEMENT ANALYTICS
+    # -----------------------------
+    total_engagements = eng_col.count_documents({})
+
+    recent_engagements = eng_col.count_documents({
+        "timestamp": {"$gte": now - timedelta(days=7)}
+    })
+
+    # -----------------------------
+    # STORE ANALYTICS
+    # -----------------------------
+    total_orders = orders_col.count_documents({})
+
+    revenue_cursor = payments_col.aggregate([
+        {"$match": {"status": "completed"}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ])
+
+    revenue_result = list(revenue_cursor)
+    total_revenue_amount = revenue_result[0]["total"] if revenue_result else 0
+
+    # -----------------------------
+    # USER SEGMENTATION
+    # -----------------------------
+    user_segments = {}
+
+    for user in newusers_col.find({}):
+        segments = recommendation_engine.get_user_segment(str(user["_id"]))
+        for segment in segments:
+            user_segments[segment] = user_segments.get(segment, 0) + 1
+
+    # -----------------------------
+    # POPULAR PRODUCTS
+    # -----------------------------
+    popular_products = []
+    for p in products_col.find().sort("rating", -1).limit(5):
+        p["_id"] = str(p["_id"])
+        popular_products.append(p)
+
+    # -----------------------------
+    # RECENT ACTIVITIES
+    # -----------------------------
+    recent_activities = []
+    for a in eng_col.find().sort("timestamp", -1).limit(10):
+        a["_id"] = str(a["_id"])
+        recent_activities.append(a)
+
+    # -----------------------------
+    # RESPONSE
+    # -----------------------------
+    return jsonify({
+        "user_metrics": {
+            "total_users": total_users,
+            "active_users": active_users,
+            "new_users_7d": new_users_7d
+        },
+        "engagement_metrics": {
+            "total_engagements": total_engagements,
+            "recent_engagements": recent_engagements,
+            "avg_session_duration": "5m 23s"  # placeholder
+        },
+        "store_metrics": {
+            "total_orders": total_orders,
+            "total_revenue": total_revenue_amount,
+            "conversion_rate": "3.2%"  # placeholder
+        },
+        "user_segments": user_segments,
+        "popular_products": popular_products,
+        "recent_activities": recent_activities
+    })
+
+# /api/consent/update
+@app.route("/api/consent/update", methods=["POST"])
+def update_consent():
+ payload = request.json or {}
+ user_id = payload.get("user_id")
+
+ if not user_id:
+    return jsonify({"error": "user_id required"}), 400
+
+ consent_updates = {
+ "extended_profile.consent.marketing_emails": payload.get("marketing_emails", False),
+
+ "extended_profile.consent.personalized_ads": payload.get("personalized_ads", False),
+ "extended_profile.consent.data_analytics": payload.get("data_analytics", False),
+ "extended_profile.consent.updated": datetime.utcnow()
+ }
+
+ newusers_col.update_one(
+ {"_id": ObjectId(user_id)},
+ {"$set": consent_updates}
+ )
+
+ return jsonify({"status": "ok", "message": "Consent preferences updated"})
+
+# /api/data/export/<user_id>
+@app.route("/api/data/export/<user_id>", methods=["GET"])
+def export_user_data(user_id):
+    """GDPR-compliant user data export"""
+
+    user = newusers_col.find_one({"_id": ObjectId(user_id)})
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # -----------------------------
+    # REMOVE INTERNAL / SENSITIVE FIELDS
+    # -----------------------------
+    export_data = {
+        "profile": user.get("profile", {}),
+        "extended_profile": user.get("extended_profile", {}),
+        "consent_preferences": user.get("extended_profile", {}).get("consent", {})
+    }
+
+    return jsonify(export_data), 200
+
+
+
+
+# /api/store/products
 @app.route("/api/store/products")
 def get_products():
     category = request.args.get("category")      # e.g., "fashion,clothing"
@@ -221,6 +435,59 @@ def recommendations_page():
 @app.route("/store")
 def store():
     return render_template("store.html")
+
+ # Get enhanced analytics
+@app.route("/build_dashboard_analytics")
+def build_dashboard_analytics():
+    # now = datetime.utcnow()
+
+    # total_users = newusers_col.count_documents({})
+    # total_engagements = eng_col.count_documents({})
+
+    # return {
+    #     "user_metrics": {
+    #         "total_users": total_users
+    #     },
+    #     "engagement_metrics": {
+    #         "total_engagements": total_engagements
+    #     }
+    # }
+   now = datetime.utcnow()
+   total_users = newusers_col.count_documents({})
+   active_users = newusers_col.count_documents({
+    "last_active": {"$gte": now - timedelta(days=30)}
+})
+   new_users_7d = newusers_col.count_documents({
+    "created": {"$gte": now - timedelta(days=7)}
+})
+total_engagements = eng_col.count_documents({})
+recent_engagements = eng_col.count_documents({
+    "timestamp": {"$gte": now - timedelta(days=7)}
+})
+
+# @app.route("/api/dashboard/analytics", methods=["GET"])
+# def get_dashboard_analytics():
+#     analytics = build_dashboard_analytics()
+#     return jsonify(analytics)
+
+@app.route("/dashboard")
+def dashboard():
+    analytics = build_dashboard_analytics()
+
+    analytics.setdefault("store_metrics", {
+    "total_orders": 0,
+    "total_revenue": 0,
+    "conversion_rate": "0%"
+})
+
+    return render_template(
+        "dashboard.html",
+        analytics=analytics,
+        total_users=analytics["user_metrics"]["total_users"],
+        total_engagements=analytics["engagement_metrics"]["total_engagements"]
+    )
+
+
 
 
 

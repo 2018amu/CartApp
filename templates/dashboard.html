@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f9;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      background: #1f2937;
+      color: #fff;
+      padding: 20px;
+    }
+
+    .sidebar h2 {
+      margin-top: 0;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin-top: 30px;
+    }
+
+    .sidebar li {
+      padding: 12px;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    .sidebar li:hover {
+      background: #374151;
+    }
+
+    /* Main */
+    .main {
+      padding: 24px;
+    }
+
+    .header {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .card p {
+      margin-top: 8px;
+      font-size: 28px;
+      font-weight: bold;
+      color: #111827;
+    }
+
+    /* Charts */
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <h2>Citizen Portal</h2>
+    <ul>
+      <li>Dashboard</li>
+      <li>Users</li>
+      <li>Analytics</li>
+      <li>Store</li>
+      <li>Settings</li>
+    </ul>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <div class="header">Admin Dashboard</div>
+
+    <!-- Metrics -->
+    <section class="stats">
+      <div class="card">
+        <h3>Total Users</h3>
+        <p>{{ total_users }}</p>
+      </div>
+
+      <div class="card">
+        <h3>Total Engagements</h3>
+        <p>{{ total_engagements }}</p>
+      </div>
+
+      <div class="card">
+        <h3>Active Users (30d)</h3>
+        <p>{{ analytics.user_metrics.active_users }}</p>
+      </div>
+
+      <div class="card">
+        <h3>Total Revenue</h3>
+        <p>LKR {{ analytics.store_metrics.total_revenue }}</p>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="charts">
+      <div class="card">
+        <h3>User Segments</h3>
+        <canvas id="segmentChart"></canvas>
+      </div>
+
+      <div class="card">
+        <h3>Engagement Summary</h3>
+        <canvas id="engagementChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Recent Activity -->
+    <section class="card">
+      <h3>Recent Activities</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>User</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for act in analytics.recent_activities %}
+          <tr>
+            <td>{{ act.type if act.type else 'interaction' }}</td>
+            <td>{{ act.user_id }}</td>
+            <td>{{ act.timestamp }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+</div>
+
+<script id="dashboard-data" type="application/json">
+    {{ analytics | tojson }}
+    </script>
+    
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+    
+      if (typeof Chart === "undefined") {
+        console.error("Chart.js not loaded");
+        return;
+      }
+    
+      // Parse backend data safely
+      const analytics = JSON.parse(
+        document.getElementById("dashboard-data").textContent
+      );
+    
+      // -----------------------------
+      // USER SEGMENTS PIE CHART
+      // -----------------------------
+      const segmentData = analytics.user_segments || {};
+    
+      if (Object.keys(segmentData).length > 0) {
+        new Chart(document.getElementById("segmentChart"), {
+          type: "pie",
+          data: {
+            labels: Object.keys(segmentData),
+            datasets: [{
+              data: Object.values(segmentData)
+            }]
+          }
+        });
+      }
+    
+      // -----------------------------
+      // ENGAGEMENT BAR CHART
+      // -----------------------------
+      const totalEngagements =
+        analytics.engagement_metrics?.total_engagements || 0;
+    
+      const recentEngagements =
+        analytics.engagement_metrics?.recent_engagements || 0;
+    
+      new Chart(document.getElementById("engagementChart"), {
+        type: "bar",
+        data: {
+          labels: ["Total", "Last 7 Days"],
+          datasets: [{
+            data: [totalEngagements, recentEngagements]
+          }]
+        }
+      });
+    
+    });
+    </script>
+    
+    
+
+</body>
+</html>
