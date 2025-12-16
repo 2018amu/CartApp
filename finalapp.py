@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_session import Session
 from pymongo import MongoClient
 from bson import ObjectId, Binary, errors as bson_errors
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 from recommendation_engine import RecommendationEngine
 import bcrypt
 import os
@@ -84,11 +84,11 @@ admins_col = db["admins"]
 eng_col = db["engagements"]
 profiles_col = db["profiles"]
 newusers_col = db["webusers"]
-products_col=db["products"]
-orders_col=["orders"]
-payments_col=["payments"]
+products_col = db["products"]
+orders_col = ["orders"]
+payments_col = ["payments"]
 
-# ///api/dashboard/analytics
+# api/dashboard/analytics
 def build_dashboard_analytics():
     now = datetime.utcnow()
 
@@ -119,7 +119,8 @@ def build_dashboard_analytics():
     # User segmentation (optional, demo)
     user_segments = {}
     for user in newusers_col.find({}):
-        segments = user.get("extended_profile", {}).get("interests", {}).get("service_preferences", [])
+        segments = user.get("extended_profile", {}).get(
+            "interests", {}).get("service_preferences", [])
         for segment in segments:
             user_segments[segment] = user_segments.get(segment, 0) + 1
 
@@ -144,7 +145,6 @@ def build_dashboard_analytics():
         "user_segments": user_segments,
         "recent_activities": recent_activities
     }
-
 
 
 # -----------------------------
@@ -242,26 +242,26 @@ def get_dashboard_analytics():
 # /api/consent/update
 @app.route("/api/consent/update", methods=["POST"])
 def update_consent():
- payload = request.json or {}
- user_id = payload.get("user_id")
+    payload = request.json or {}
+    user_id = payload.get("user_id")
 
- if not user_id:
-    return jsonify({"error": "user_id required"}), 400
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
 
- consent_updates = {
- "extended_profile.consent.marketing_emails": payload.get("marketing_emails", False),
+    consent_updates = {
+        "extended_profile.consent.marketing_emails": payload.get("marketing_emails", False),
 
- "extended_profile.consent.personalized_ads": payload.get("personalized_ads", False),
- "extended_profile.consent.data_analytics": payload.get("data_analytics", False),
- "extended_profile.consent.updated": datetime.utcnow()
- }
+        "extended_profile.consent.personalized_ads": payload.get("personalized_ads", False),
+        "extended_profile.consent.data_analytics": payload.get("data_analytics", False),
+        "extended_profile.consent.updated": datetime.utcnow()
+    }
 
- newusers_col.update_one(
- {"_id": ObjectId(user_id)},
- {"$set": consent_updates}
- )
+    newusers_col.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": consent_updates}
+    )
 
- return jsonify({"status": "ok", "message": "Consent preferences updated"})
+    return jsonify({"status": "ok", "message": "Consent preferences updated"})
 
 # /api/data/export/<user_id>
 @app.route("/api/data/export/<user_id>", methods=["GET"])
@@ -285,8 +285,6 @@ def export_user_data(user_id):
     return jsonify(export_data), 200
 
 
-
-
 # /api/store/products
 @app.route("/api/store/products")
 def get_products():
@@ -302,19 +300,22 @@ def get_products():
     if category:
         categories = [c.strip() for c in category.split(",") if c.strip()]
         if categories:
-            query["category"] = {"$in": [re.compile(f"^{c}$", re.IGNORECASE) for c in categories]}
+            query["category"] = {
+                "$in": [re.compile(f"^{c}$", re.IGNORECASE) for c in categories]}
 
     # --- Delivery (case-insensitive)
     if delivery:
         deliveries = [d.strip() for d in delivery.split(",") if d.strip()]
         if deliveries:
-            query["delivery"] = {"$in": [re.compile(f"^{d}$", re.IGNORECASE) for d in deliveries]}
+            query["delivery"] = {
+                "$in": [re.compile(f"^{d}$", re.IGNORECASE) for d in deliveries]}
 
     # --- Tags (case-insensitive)
     if tags:
         tags_list = [t.strip() for t in tags.split(",") if t.strip()]
         if tags_list:
-            query["tags"] = {"$in": [re.compile(f"^{t}$", re.IGNORECASE) for t in tags_list]}
+            query["tags"] = {
+                "$in": [re.compile(f"^{t}$", re.IGNORECASE) for t in tags_list]}
 
     # --- Price filter
     if min_price is not None or max_price is not None:
@@ -327,7 +328,8 @@ def get_products():
     # Fetch products from MongoDB
     products = list(products_col.find(
         query,
-        {"_id": 1, "name": 1, "price": 1, "original_price": 1, "images": 1, "category": 1, "delivery": 1}
+        {"_id": 1, "name": 1, "price": 1, "original_price": 1,
+            "images": 1, "category": 1, "delivery": 1}
     ).limit(50))
 
     # Convert _id to string
@@ -339,15 +341,16 @@ def get_products():
 # /api/store/categories
 @app.route("/api/store/categories")
 def get_store_categories():
- categories = products_col.distinct("category")
- subcategories = {}
- for cat in categories:
-    subcategories[cat] = products_col.distinct("subcategory", {"category": cat})
+    categories = products_col.distinct("category")
+    subcategories = {}
+    for cat in categories:
+        subcategories[cat] = products_col.distinct(
+            "subcategory", {"category": cat})
 
- return jsonify({
- "categories": categories,
- "subcategories": subcategories
- })
+    return jsonify({
+        "categories": categories,
+        "subcategories": subcategories
+    })
 
 # //api/store/order
 @app.route("/api/store/order", methods=["POST"])
@@ -368,146 +371,112 @@ def create_order():
 
     result = orders_col.insert_one(order)
     return jsonify({"status": "ok", "order_id": order["order_id"]})
+
+
 # /api/store/payment
 @app.route("/api/store/payment", methods=["POST"])
 def process_payment():
- payload = request.json or {}
+    payload = request.json or {}
 
- payment = {
- "payment_id": f"PAY{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
- "order_id": payload.get("order_id"),
- "user_id": payload.get("user_id"),
- "amount": payload.get("amount", 0),
- "currency": payload.get("currency", "LKR"),
- "method": payload.get("method"),
- "status": "completed",
- "transaction_id": payload.get("transaction_id"),
- "created": datetime.utcnow()
- }
+    payment = {
+        "payment_id": f"PAY{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+        "order_id": payload.get("order_id"),
+        "user_id": payload.get("user_id"),
+        "amount": payload.get("amount", 0),
+        "currency": payload.get("currency", "LKR"),
+        "method": payload.get("method"),
+        "status": "completed",
+        "transaction_id": payload.get("transaction_id"),
+        "created": datetime.utcnow()
+    }
 
- # Update order status
- orders_col.update_one(
- {"order_id": payload.get("order_id")},
- {"$set": {"status": "paid", "updated": datetime.utcnow()}}
- )
+    # Update order status
+    orders_col.update_one(
+        {"order_id": payload.get("order_id")},
+        {"$set": {"status": "paid", "updated": datetime.utcnow()}}
+    )
 
- payments_col.insert_one(payment)
+    payments_col.insert_one(payment)
 
- # Log engagement for recommendation system
- eng_col.insert_one({
- "user_id": payload.get("user_id"),
- "type": "purchase",
- "product_ids": [item.get("product_id") for item in payload.get("items", [])],
- "amount": payload.get("amount", 0),
- "timestamp": datetime.utcnow()
- })
- return jsonify({"status": "ok", "payment_id": payment["payment_id"]})
+    # Log engagement for recommendation system
+    eng_col.insert_one({
+        "user_id": payload.get("user_id"),
+        "type": "purchase",
+        "product_ids": [item.get("product_id") for item in payload.get("items", [])],
+        "amount": payload.get("amount", 0),
+        "timestamp": datetime.utcnow()
+    })
+    return jsonify({"status": "ok", "payment_id": payment["payment_id"]})
 
 
 recommendation_engine = RecommendationEngine()
+
 
 @app.route("/recommendations")
 def recommendations_page():
     return render_template("recommendations.html")
 
+
 @app.route("/store")
 def store():
     return render_template("store.html")
 
- # Get enhanced analytics
-# @app.route("/build_dashboard_analytics")
-# def build_dashboard_analytics():
+# def build_dashboard_analytics(db):
 #     now = datetime.utcnow()
+
+#     newusers_col = db["webusers"]
+#     eng_col = db["engagements"]
+#     orders_col = db["orders"]
+
+#     analytics = {}
+
+#     # ------------------------
+#     # USER METRICS
+#     # ------------------------
 #     total_users = newusers_col.count_documents({})
-#     active_users = newusers_col.count_documents({
-#     "last_active": {"$gte": now - timedelta(days=30)}
-# })
-#     new_users_7d = newusers_col.count_documents({
-#     "created": {"$gte": now - timedelta(days=7)}
-# })
-#     recent_engagements = eng_col.count_documents({
-#     "timestamp": {
-#         "$gte": now - timedelta(days=7)
+
+#     analytics["user_metrics"] = {
+#         "total_users": total_users,
+#         "new_users_7d": newusers_col.count_documents({
+#             "created_at": {"$gte": now - timedelta(days=7)}
+#         })
 #     }
-# })
 
-def build_dashboard_analytics(db):
-    now = datetime.utcnow()
+#     # ------------------------
+#     # USER SEGMENTS (FOR GRAPH)
+#     # ------------------------
+#     analytics["user_segments"] = {
+#         "students": newusers_col.count_documents({"role": "student"}),
+#         "employees": newusers_col.count_documents({"role": "employee"}),
+#         "business": newusers_col.count_documents({"role": "business"}),
+#         "others": newusers_col.count_documents({
+#             "role": {"$nin": ["student", "employee", "business"]}
+#         })
+#     }
 
-    newusers_col = db["webusers"]
-    eng_col = db["engagements"]
-    orders_col = db["orders"]
+#     # ------------------------
+#     # ENGAGEMENT METRICS
+#     # ------------------------
+#     analytics["engagement_metrics"] = {
+#         "total_engagements": eng_col.count_documents({}),
+#         "recent_engagements": eng_col.count_documents({
+#             "timestamp": {"$gte": now - timedelta(days=7)}
+#         })
+#     }
 
-    analytics = {}
-
-    # ------------------------
-    # USER METRICS
-    # ------------------------
-    total_users = newusers_col.count_documents({})
-
-    analytics["user_metrics"] = {
-        "total_users": total_users,
-        "new_users_7d": newusers_col.count_documents({
-            "created_at": {"$gte": now - timedelta(days=7)}
-        })
-    }
-
-    # ------------------------
-    # USER SEGMENTS (FOR GRAPH)
-    # ------------------------
-    analytics["user_segments"] = {
-        "students": newusers_col.count_documents({"role": "student"}),
-        "employees": newusers_col.count_documents({"role": "employee"}),
-        "business": newusers_col.count_documents({"role": "business"}),
-        "others": newusers_col.count_documents({
-            "role": {"$nin": ["student", "employee", "business"]}
-        })
-    }
-
-    # ------------------------
-    # ENGAGEMENT METRICS
-    # ------------------------
-    analytics["engagement_metrics"] = {
-        "total_engagements": eng_col.count_documents({}),
-        "recent_engagements": eng_col.count_documents({
-            "timestamp": {"$gte": now - timedelta(days=7)}
-        })
-    }
-
-    # ------------------------
-    # RECENT ACTIVITIES SUMMARY
-    # ------------------------
-    recent_activities = list(
-        eng_col.find(
-            {},
-            {"_id": 0, "user_id": 1, "action": 1, "timestamp": 1}
-        ).sort("timestamp", -1).limit(5)
-    )
-
-    analytics["recent_activities"] = recent_activities
-
-    return analytics
-
-
-# @app.route("/dashboard")
-# def dashboard():
-#     analytics = build_dashboard_analytics(db) or {}
-
-#     # Ensure all keys exist to avoid KeyError
-#     analytics.setdefault("user_metrics", {"total_users": 0, "active_users": 0, "new_users": 0})
-#     analytics.setdefault("engagement_metrics", {"total_engagements": 0, "recent_engagements": 0})
-#     analytics.setdefault("store_metrics", {"total_orders": 0, "total_revenue": 0, "conversion_rate": "0%"})
-
-#     # Optional: assign to variables for template
-#     total_users = analytics["user_metrics"]["total_users"]
-#     total_engagements = analytics["engagement_metrics"]["total_engagements"]
-
-#     return render_template(
-#         "dashboard.html",
-#         analytics=analytics,
-#         total_users=total_users,
-#         total_engagements=total_engagements
+#     # ------------------------
+#     # RECENT ACTIVITIES SUMMARY
+#     # ------------------------
+#     recent_activities = list(
+#         eng_col.find(
+#             {},
+#             {"_id": 0, "user_id": 1, "action": 1, "timestamp": 1}
+#         ).sort("timestamp", -1).limit(5)
 #     )
+
+#     analytics["recent_activities"] = recent_activities
+
+#     return analytics
 
 @app.route("/dashboard")
 def dashboard():
@@ -543,15 +512,12 @@ def dashboard():
     )
 
 
-
-    
-
-
 @app.route("/api/recommendations/<user_id>")
 def get_recommendations(user_id):
     try:
         ads = recommendation_engine.get_personalized_ads(user_id)
-        edu_recommendations = recommendation_engine.generate_education_recommendations(user_id)
+        edu_recommendations = recommendation_engine.generate_education_recommendations(
+            user_id)
 
         return jsonify({
             "ads": ads,
@@ -563,6 +529,8 @@ def get_recommendations(user_id):
         return jsonify({"error": str(e)}), 500
 
 # ---------------- Utilities ----------------
+
+
 def to_jsonable(obj):
     if isinstance(obj, ObjectId):
         return str(obj)
@@ -733,6 +701,8 @@ def load_faiss_index():
 _index, _meta = load_faiss_index()
 
 # ---------------- Routes ----------------
+
+
 @app.route("/")
 def home():
     try:
@@ -764,6 +734,7 @@ def admin_login():
         return render_template("admin_login.html", error="Invalid credentials")
     return render_template("admin_login.html")
 
+
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
@@ -780,6 +751,7 @@ def admin_logout():
 
 # Admin endpoint to rebuild index
 
+
 @app.route("/admin/rebuild_faiss", methods=["POST"])
 @admin_required
 def admin_rebuild_faiss():
@@ -789,6 +761,8 @@ def admin_rebuild_faiss():
     return jsonify({"ok": ok})
 
 # ---------------- Profiles ----------------
+
+
 @app.route("/api/profile/step", methods=["POST"])
 def api_profile_step():
     data = request.json or {}
