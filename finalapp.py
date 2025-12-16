@@ -89,7 +89,6 @@ orders_col=["orders"]
 payments_col=["payments"]
 
 # ///api/dashboard/analytics
-
 def build_dashboard_analytics():
     now = datetime.utcnow()
 
@@ -146,28 +145,11 @@ def build_dashboard_analytics():
         "recent_activities": recent_activities
     }
 
-# -----------------------------
-# Route: dashboard page
-# -----------------------------
-@app.route("/dashboard")
-def dashboard():
-    analytics = build_dashboard_analytics()
 
-    return render_template(
-        "dashboard.html",
-        analytics=analytics,
-        total_users=analytics["user_metrics"]["total_users"],
-        total_engagements=analytics["engagement_metrics"]["total_engagements"]
-    )
 
 # -----------------------------
 # Route: analytics API (optional)
 # -----------------------------
-@app.route("/api/dashboard/analytics", methods=["GET"])
-def get_dashboard_analytics():
-    return jsonify(build_dashboard_analytics())
-
-
 @app.route("/api/dashboard/analytics", methods=["GET"])
 def get_dashboard_analytics():
     now = datetime.utcnow()
@@ -354,10 +336,6 @@ def get_products():
 
     return jsonify(products)
 
-
-
-
-
 # /api/store/categories
 @app.route("/api/store/categories")
 def get_store_categories():
@@ -460,36 +438,39 @@ def build_dashboard_analytics():
    new_users_7d = newusers_col.count_documents({
     "created": {"$gte": now - timedelta(days=7)}
 })
-total_engagements = eng_col.count_documents({})
-recent_engagements = eng_col.count_documents({
-    "timestamp": {"$gte": now - timedelta(days=7)}
+   recent_engagements = eng_col.count_documents({
+    "timestamp": {
+        "$gte": now - timedelta(days=7)
+    }
 })
 
-# @app.route("/api/dashboard/analytics", methods=["GET"])
-# def get_dashboard_analytics():
-#     analytics = build_dashboard_analytics()
-#     return jsonify(analytics)
 
 @app.route("/dashboard")
 def dashboard():
-    analytics = build_dashboard_analytics()
+    analytics = build_dashboard_analytics() or {}
+
+    analytics.setdefault("user_metrics", {
+        "total_users": 0,
+        "active_users": 0,
+        "new_users": 0
+    })
+
+    analytics.setdefault("engagement_metrics", {
+        "total_engagements": 0,
+        "recent_engagements": 0
+    })
 
     analytics.setdefault("store_metrics", {
-    "total_orders": 0,
-    "total_revenue": 0,
-    "conversion_rate": "0%"
-})
-
+        "total_orders": 0,
+        "total_revenue": 0,
+        "conversion_rate": "0%"
+    })
     return render_template(
         "dashboard.html",
         analytics=analytics,
         total_users=analytics["user_metrics"]["total_users"],
         total_engagements=analytics["engagement_metrics"]["total_engagements"]
     )
-
-
-
-
 
 @app.route("/api/recommendations/<user_id>")
 def get_recommendations(user_id):
@@ -506,11 +487,7 @@ def get_recommendations(user_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-
 # ---------------- Utilities ----------------
-
-
 def to_jsonable(obj):
     if isinstance(obj, ObjectId):
         return str(obj)
@@ -681,8 +658,6 @@ def load_faiss_index():
 _index, _meta = load_faiss_index()
 
 # ---------------- Routes ----------------
-
-
 @app.route("/")
 def home():
     try:
@@ -714,7 +689,6 @@ def admin_login():
         return render_template("admin_login.html", error="Invalid credentials")
     return render_template("admin_login.html")
 
-
 @app.route("/admin")
 @admin_required
 def admin_dashboard():
@@ -731,7 +705,6 @@ def admin_logout():
 
 # Admin endpoint to rebuild index
 
-
 @app.route("/admin/rebuild_faiss", methods=["POST"])
 @admin_required
 def admin_rebuild_faiss():
@@ -741,8 +714,6 @@ def admin_rebuild_faiss():
     return jsonify({"ok": ok})
 
 # ---------------- Profiles ----------------
-
-
 @app.route("/api/profile/step", methods=["POST"])
 def api_profile_step():
     data = request.json or {}
