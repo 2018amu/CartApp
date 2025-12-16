@@ -415,49 +415,117 @@ def store():
     return render_template("store.html")
 
  # Get enhanced analytics
-@app.route("/build_dashboard_analytics")
-def build_dashboard_analytics():
-    # now = datetime.utcnow()
+# @app.route("/build_dashboard_analytics")
+# def build_dashboard_analytics():
+#     now = datetime.utcnow()
+#     total_users = newusers_col.count_documents({})
+#     active_users = newusers_col.count_documents({
+#     "last_active": {"$gte": now - timedelta(days=30)}
+# })
+#     new_users_7d = newusers_col.count_documents({
+#     "created": {"$gte": now - timedelta(days=7)}
+# })
+#     recent_engagements = eng_col.count_documents({
+#     "timestamp": {
+#         "$gte": now - timedelta(days=7)
+#     }
+# })
 
-    # total_users = newusers_col.count_documents({})
-    # total_engagements = eng_col.count_documents({})
+def build_dashboard_analytics(db):
+    now = datetime.utcnow()
 
-    # return {
-    #     "user_metrics": {
-    #         "total_users": total_users
-    #     },
-    #     "engagement_metrics": {
-    #         "total_engagements": total_engagements
-    #     }
-    # }
-   now = datetime.utcnow()
-   total_users = newusers_col.count_documents({})
-   active_users = newusers_col.count_documents({
-    "last_active": {"$gte": now - timedelta(days=30)}
-})
-   new_users_7d = newusers_col.count_documents({
-    "created": {"$gte": now - timedelta(days=7)}
-})
-   recent_engagements = eng_col.count_documents({
-    "timestamp": {
-        "$gte": now - timedelta(days=7)
+    newusers_col = db["webusers"]
+    eng_col = db["engagements"]
+    orders_col = db["orders"]
+
+    analytics = {}
+
+    # ------------------------
+    # USER METRICS
+    # ------------------------
+    total_users = newusers_col.count_documents({})
+
+    analytics["user_metrics"] = {
+        "total_users": total_users,
+        "new_users_7d": newusers_col.count_documents({
+            "created_at": {"$gte": now - timedelta(days=7)}
+        })
     }
-})
 
+    # ------------------------
+    # USER SEGMENTS (FOR GRAPH)
+    # ------------------------
+    analytics["user_segments"] = {
+        "students": newusers_col.count_documents({"role": "student"}),
+        "employees": newusers_col.count_documents({"role": "employee"}),
+        "business": newusers_col.count_documents({"role": "business"}),
+        "others": newusers_col.count_documents({
+            "role": {"$nin": ["student", "employee", "business"]}
+        })
+    }
+
+    # ------------------------
+    # ENGAGEMENT METRICS
+    # ------------------------
+    analytics["engagement_metrics"] = {
+        "total_engagements": eng_col.count_documents({}),
+        "recent_engagements": eng_col.count_documents({
+            "timestamp": {"$gte": now - timedelta(days=7)}
+        })
+    }
+
+    # ------------------------
+    # RECENT ACTIVITIES SUMMARY
+    # ------------------------
+    recent_activities = list(
+        eng_col.find(
+            {},
+            {"_id": 0, "user_id": 1, "action": 1, "timestamp": 1}
+        ).sort("timestamp", -1).limit(5)
+    )
+
+    analytics["recent_activities"] = recent_activities
+
+    return analytics
+
+
+# @app.route("/dashboard")
+# def dashboard():
+#     analytics = build_dashboard_analytics(db) or {}
+
+#     # Ensure all keys exist to avoid KeyError
+#     analytics.setdefault("user_metrics", {"total_users": 0, "active_users": 0, "new_users": 0})
+#     analytics.setdefault("engagement_metrics", {"total_engagements": 0, "recent_engagements": 0})
+#     analytics.setdefault("store_metrics", {"total_orders": 0, "total_revenue": 0, "conversion_rate": "0%"})
+
+#     # Optional: assign to variables for template
+#     total_users = analytics["user_metrics"]["total_users"]
+#     total_engagements = analytics["engagement_metrics"]["total_engagements"]
+
+#     return render_template(
+#         "dashboard.html",
+#         analytics=analytics,
+#         total_users=total_users,
+#         total_engagements=total_engagements
+#     )
 
 @app.route("/dashboard")
 def dashboard():
-    analytics = build_dashboard_analytics() or {}
+    analytics = build_dashboard_analytics(db)
+
+    # SAFETY: analytics must always be a dict
+    if not isinstance(analytics, dict):
+        analytics = {}
 
     analytics.setdefault("user_metrics", {
         "total_users": 0,
         "active_users": 0,
-        "new_users": 0
+        "new_users_7d": 0
     })
 
     analytics.setdefault("engagement_metrics", {
         "total_engagements": 0,
-        "recent_engagements": 0
+        "recent_engagements_7d": 0
     })
 
     analytics.setdefault("store_metrics", {
@@ -465,12 +533,19 @@ def dashboard():
         "total_revenue": 0,
         "conversion_rate": "0%"
     })
+
+    analytics.setdefault("user_segments", {})
+    analytics.setdefault("recent_activities", [])
+
     return render_template(
         "dashboard.html",
-        analytics=analytics,
-        total_users=analytics["user_metrics"]["total_users"],
-        total_engagements=analytics["engagement_metrics"]["total_engagements"]
+        analytics=analytics
     )
+
+
+
+    
+
 
 @app.route("/api/recommendations/<user_id>")
 def get_recommendations(user_id):

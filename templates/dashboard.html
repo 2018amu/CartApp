@@ -91,7 +91,7 @@
     /* Charts */
     .charts {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 20px;
       margin-bottom: 24px;
     }
@@ -100,13 +100,14 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 10px;
     }
 
     th, td {
       padding: 10px;
       border-bottom: 1px solid #e5e7eb;
-      text-align: left;
       font-size: 14px;
+      text-align: left;
     }
 
     th {
@@ -114,6 +115,10 @@
       font-weight: 600;
     }
 
+    .muted {
+      color: #6b7280;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -141,22 +146,22 @@
     <section class="stats">
       <div class="card">
         <h3>Total Users</h3>
-        <p>{{ total_users }}</p>
+        <p>{{ analytics.user_metrics.total_users | default(0) }}</p>
       </div>
 
       <div class="card">
         <h3>Total Engagements</h3>
-        <p>{{ total_engagements }}</p>
+        <p>{{ analytics.engagement_metrics.total_engagements | default(0) }}</p>
       </div>
 
       <div class="card">
-        <h3>Active Users (30d)</h3>
-        <p>{{ analytics.user_metrics.active_users }}</p>
+        <h3>New Users (7 days)</h3>
+        <p>{{ analytics.user_metrics.new_users_7d | default(0) }}</p>
       </div>
 
       <div class="card">
         <h3>Total Revenue</h3>
-        <p>LKR {{ analytics.store_metrics.total_revenue }}</p>
+        <p>LKR {{ analytics.store_metrics.total_revenue | default(0) }}</p>
       </div>
     </section>
 
@@ -165,21 +170,25 @@
       <div class="card">
         <h3>User Segments</h3>
         <canvas id="segmentChart"></canvas>
+        <p class="muted">Distribution of users by role</p>
       </div>
 
       <div class="card">
         <h3>Engagement Summary</h3>
         <canvas id="engagementChart"></canvas>
+        <p class="muted">Total vs recent (7 days)</p>
       </div>
     </section>
 
     <!-- Recent Activity -->
     <section class="card">
       <h3>Recent Activities</h3>
+
+      {% if analytics.recent_activities and analytics.recent_activities|length > 0 %}
       <table>
         <thead>
           <tr>
-            <th>Type</th>
+            <th>Action</th>
             <th>User</th>
             <th>Date</th>
           </tr>
@@ -187,75 +196,85 @@
         <tbody>
           {% for act in analytics.recent_activities %}
           <tr>
-            <td>{{ act.type if act.type else 'interaction' }}</td>
-            <td>{{ act.user_id }}</td>
+            <td>{{ act.action | default("interaction") }}</td>
+            <td>{{ act.user_id | default("unknown") }}</td>
             <td>{{ act.timestamp }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% else %}
+        <p class="muted">No recent activities available</p>
+      {% endif %}
     </section>
 
   </main>
 </div>
 
+<!-- Backend JSON -->
 <script id="dashboard-data" type="application/json">
-    {{ analytics | tojson }}
-    </script>
-    
-    <script>
-    document.addEventListener("DOMContentLoaded", function () {
-    
-      if (typeof Chart === "undefined") {
-        console.error("Chart.js not loaded");
-        return;
-      }
-    
-      // Parse backend data safely
-      const analytics = JSON.parse(
-        document.getElementById("dashboard-data").textContent
-      );
-    
-      // -----------------------------
-      // USER SEGMENTS PIE CHART
-      // -----------------------------
-      const segmentData = analytics.user_segments || {};
-    
-      if (Object.keys(segmentData).length > 0) {
-        new Chart(document.getElementById("segmentChart"), {
-          type: "pie",
-          data: {
-            labels: Object.keys(segmentData),
-            datasets: [{
-              data: Object.values(segmentData)
-            }]
-          }
-        });
-      }
-    
-      // -----------------------------
-      // ENGAGEMENT BAR CHART
-      // -----------------------------
-      const totalEngagements =
-        analytics.engagement_metrics?.total_engagements || 0;
-    
-      const recentEngagements =
-        analytics.engagement_metrics?.recent_engagements || 0;
-    
-      new Chart(document.getElementById("engagementChart"), {
-        type: "bar",
-        data: {
-          labels: ["Total", "Last 7 Days"],
-          datasets: [{
-            data: [totalEngagements, recentEngagements]
-          }]
-        }
-      });
-    
-    });
-    </script>
-    
-    
+{{ analytics | tojson }}
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  if (typeof Chart === "undefined") {
+    console.error("Chart.js not loaded");
+    return;
+  }
+
+  const analytics = JSON.parse(
+    document.getElementById("dashboard-data").textContent
+  );
+
+  /* -------------------------
+     USER SEGMENTS PIE CHART
+  ------------------------- */
+  const segmentData = analytics.user_segments || {};
+
+  console.log("Segment Data:", segmentData); // DEBUG
+
+  const labels = Object.keys(segmentData);
+  const values = Object.values(segmentData);
+
+  if (labels.length === 0) {
+    console.warn("No user segment data to display");
+    return;
+  }
+
+  new Chart(document.getElementById("segmentChart"), {
+    type: "pie",
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values
+      }]
+    }
+  });
+
+  /* -------------------------
+     ENGAGEMENT BAR CHART
+  ------------------------- */
+  const totalEngagements =
+    analytics.engagement_metrics?.total_engagements || 0;
+
+  const recentEngagements =
+    analytics.engagement_metrics?.recent_engagements_7d ||
+    analytics.engagement_metrics?.recent_engagements || 0;
+
+  new Chart(document.getElementById("engagementChart"), {
+    type: "bar",
+    data: {
+      labels: ["Total", "Last 7 Days"],
+      datasets: [{
+        data: [totalEngagements, recentEngagements]
+      }]
+    }
+  });
+
+});
+</script>
 
 </body>
 </html>
