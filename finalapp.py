@@ -1,5 +1,4 @@
-from bson import ObjectId
-from flask import request, jsonify
+from bson import ObjectId, json_util
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
 from flask_cors import CORS
 from flask_session import Session
@@ -88,11 +87,20 @@ products_col = db["products"]
 orders_col = ["orders"]
 payments_col = ["payments"]
 
-# api/dashboard/analytics
-def build_dashboard_analytics():
+
+# -----------------------------
+# Analytics function
+# -----------------------------
+def build_dashboard_analytics(db):
     now = datetime.utcnow()
 
-    # User metrics
+    # Collections
+    newusers_col = db["webusers"]
+    engagements_col = db["engagements"]
+    orders_col = db["orders"]
+    payments_col = db["payments"]
+
+    # ----- User metrics -----
     total_users = newusers_col.count_documents({})
     active_users = newusers_col.count_documents({
         "last_active": {"$gte": now - timedelta(days=30)}
@@ -101,13 +109,13 @@ def build_dashboard_analytics():
         "created": {"$gte": now - timedelta(days=7)}
     })
 
-    # Engagement metrics
-    total_engagements = eng_col.count_documents({})
-    recent_engagements = eng_col.count_documents({
+    # ----- Engagement metrics -----
+    total_engagements = engagements_col.count_documents({})
+    recent_engagements_7d = engagements_col.count_documents({
         "timestamp": {"$gte": now - timedelta(days=7)}
     })
 
-    # Store metrics
+    # ----- Store metrics -----
     total_orders = orders_col.count_documents({})
     revenue_cursor = payments_col.aggregate([
         {"$match": {"status": "completed"}},
@@ -116,7 +124,7 @@ def build_dashboard_analytics():
     revenue_result = list(revenue_cursor)
     total_revenue_amount = revenue_result[0]["total"] if revenue_result else 0
 
-    # User segmentation (optional, demo)
+    # ----- User segmentation -----
     user_segments = {}
     for user in newusers_col.find({}):
         segments = user.get("extended_profile", {}).get(
@@ -124,10 +132,14 @@ def build_dashboard_analytics():
         for segment in segments:
             user_segments[segment] = user_segments.get(segment, 0) + 1
 
-    # Recent activities
-    recent_activities = list(eng_col.find().sort("timestamp", -1).limit(10))
+    # ----- Recent activities -----
+    recent_activities = list(
+        engagements_col.find().sort("timestamp", -1).limit(10))
+    # Convert all ObjectIds to strings for JSON serialization
+    recent_activities = json.loads(json_util.dumps(recent_activities))
 
-    return {
+    # Build analytics dictionary
+    analytics = {
         "user_metrics": {
             "total_users": total_users,
             "active_users": active_users,
@@ -135,18 +147,36 @@ def build_dashboard_analytics():
         },
         "engagement_metrics": {
             "total_engagements": total_engagements,
-            "recent_engagements": recent_engagements
+            "recent_engagements_7d": recent_engagements_7d
         },
         "store_metrics": {
             "total_orders": total_orders,
             "total_revenue": total_revenue_amount,
-            "conversion_rate": "3.2%"
+            "conversion_rate": "3.2%"  # Replace with real calculation if needed
         },
         "user_segments": user_segments,
         "recent_activities": recent_activities
     }
 
+    # Safety defaults
+    analytics.setdefault(
+        "user_metrics", {"total_users": 0, "active_users": 0, "new_users_7d": 0})
+    analytics.setdefault("engagement_metrics", {
+                         "total_engagements": 0, "recent_engagements_7d": 0})
+    analytics.setdefault("store_metrics", {
+                         "total_orders": 0, "total_revenue": 0, "conversion_rate": "0%"})
+    analytics.setdefault("user_segments", {})
+    analytics.setdefault("recent_activities", [])
 
+    return analytics
+
+# -----------------------------
+# Dashboard route
+# -----------------------------
+@app.route("/dashboard")
+def dashboard():
+    analytics = build_dashboard_analytics(db)  # Pass your db object here
+    return render_template("dashboard.html", analytics=analytics)
 # -----------------------------
 # Route: analytics API (optional)
 # -----------------------------
@@ -339,6 +369,8 @@ def get_products():
     return jsonify(products)
 
 # /api/store/categories
+
+
 @app.route("/api/store/categories")
 def get_store_categories():
     categories = products_col.distinct("category")
@@ -371,7 +403,6 @@ def create_order():
 
     result = orders_col.insert_one(order)
     return jsonify({"status": "ok", "order_id": order["order_id"]})
-
 
 # /api/store/payment
 @app.route("/api/store/payment", methods=["POST"])
@@ -421,96 +452,6 @@ def recommendations_page():
 def store():
     return render_template("store.html")
 
-# def build_dashboard_analytics(db):
-#     now = datetime.utcnow()
-
-#     newusers_col = db["webusers"]
-#     eng_col = db["engagements"]
-#     orders_col = db["orders"]
-
-#     analytics = {}
-
-#     # ------------------------
-#     # USER METRICS
-#     # ------------------------
-#     total_users = newusers_col.count_documents({})
-
-#     analytics["user_metrics"] = {
-#         "total_users": total_users,
-#         "new_users_7d": newusers_col.count_documents({
-#             "created_at": {"$gte": now - timedelta(days=7)}
-#         })
-#     }
-
-#     # ------------------------
-#     # USER SEGMENTS (FOR GRAPH)
-#     # ------------------------
-#     analytics["user_segments"] = {
-#         "students": newusers_col.count_documents({"role": "student"}),
-#         "employees": newusers_col.count_documents({"role": "employee"}),
-#         "business": newusers_col.count_documents({"role": "business"}),
-#         "others": newusers_col.count_documents({
-#             "role": {"$nin": ["student", "employee", "business"]}
-#         })
-#     }
-
-#     # ------------------------
-#     # ENGAGEMENT METRICS
-#     # ------------------------
-#     analytics["engagement_metrics"] = {
-#         "total_engagements": eng_col.count_documents({}),
-#         "recent_engagements": eng_col.count_documents({
-#             "timestamp": {"$gte": now - timedelta(days=7)}
-#         })
-#     }
-
-#     # ------------------------
-#     # RECENT ACTIVITIES SUMMARY
-#     # ------------------------
-#     recent_activities = list(
-#         eng_col.find(
-#             {},
-#             {"_id": 0, "user_id": 1, "action": 1, "timestamp": 1}
-#         ).sort("timestamp", -1).limit(5)
-#     )
-
-#     analytics["recent_activities"] = recent_activities
-
-#     return analytics
-
-@app.route("/dashboard")
-def dashboard():
-    analytics = build_dashboard_analytics(db)
-
-    # SAFETY: analytics must always be a dict
-    if not isinstance(analytics, dict):
-        analytics = {}
-
-    analytics.setdefault("user_metrics", {
-        "total_users": 0,
-        "active_users": 0,
-        "new_users_7d": 0
-    })
-
-    analytics.setdefault("engagement_metrics", {
-        "total_engagements": 0,
-        "recent_engagements_7d": 0
-    })
-
-    analytics.setdefault("store_metrics", {
-        "total_orders": 0,
-        "total_revenue": 0,
-        "conversion_rate": "0%"
-    })
-
-    analytics.setdefault("user_segments", {})
-    analytics.setdefault("recent_activities", [])
-
-    return render_template(
-        "dashboard.html",
-        analytics=analytics
-    )
-
 
 @app.route("/api/recommendations/<user_id>")
 def get_recommendations(user_id):
@@ -529,7 +470,6 @@ def get_recommendations(user_id):
         return jsonify({"error": str(e)}), 500
 
 # ---------------- Utilities ----------------
-
 
 def to_jsonable(obj):
     if isinstance(obj, ObjectId):
@@ -701,8 +641,6 @@ def load_faiss_index():
 _index, _meta = load_faiss_index()
 
 # ---------------- Routes ----------------
-
-
 @app.route("/")
 def home():
     try:
@@ -711,8 +649,6 @@ def home():
         return "Citizen Portal API Running"
 
 # ---------------- Admin ----------------
-
-
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
@@ -750,8 +686,6 @@ def admin_logout():
     return redirect(url_for("admin_login"))
 
 # Admin endpoint to rebuild index
-
-
 @app.route("/admin/rebuild_faiss", methods=["POST"])
 @admin_required
 def admin_rebuild_faiss():
@@ -761,8 +695,6 @@ def admin_rebuild_faiss():
     return jsonify({"ok": ok})
 
 # ---------------- Profiles ----------------
-
-
 @app.route("/api/profile/step", methods=["POST"])
 def api_profile_step():
     data = request.json or {}
@@ -817,8 +749,6 @@ def api_profile_step():
     return jsonify({"error": "Unhandled case"}), 400
 
 # ---------------- Services / Categories / Ads / Officers ----------------
-
-
 @app.route("/api/services", methods=["GET"])
 def api_services():
     docs = list(services_col.find({}, {"_id": 0}))
@@ -932,8 +862,6 @@ def extended_profile():
     return jsonify({"status": "ok"})
 
 # add new user  (/api/profile/extended)
-
-
 @app.route("/api/profile/create", methods=["POST"])
 def create_profile():
     payload = request.json or {}
@@ -1058,8 +986,6 @@ def log_enhanced_engagement():
     return jsonify({"status": "ok"})
 
 # ---------------- Engagement CSV ----------------
-
-
 @app.route("/api/admin/export_engagement_csv", methods=["GET"])
 @admin_required
 def export_engagement_csv():
@@ -1182,7 +1108,7 @@ def api_ai_search():
     if not query:
         return jsonify({"error": "Query required"}), 400
 
-    # 1️⃣ FAISS SEARCH
+    # 1. FAISS SEARCH
     try:
         idx, meta = load_faiss_index()
         if idx and meta:
@@ -1203,7 +1129,7 @@ def api_ai_search():
     except Exception as e:
         app.logger.exception("FAISS error: %s", e)
 
-    # 2️⃣ DB SEARCH (first match only)
+    # 2. DB SEARCH (first match only)
     try:
         q_regex = {"$regex": query, "$options": "i"}
         svc = services_col.find_one(
@@ -1220,7 +1146,7 @@ def api_ai_search():
     except Exception as e:
         app.logger.exception("DB search error: %s", e)
 
-    # 3️⃣ AI FALLBACK
+    # 3️. AI FALLBACK
     try:
         # Build context from DB
         context_docs = []
@@ -1246,7 +1172,7 @@ def api_ai_search():
     except Exception as e:
         app.logger.exception("AI fallback error: %s", e)
 
-    # 4️⃣ NOTHING FOUND
+    # 4 NOTHING FOUND
     return jsonify({
         "source": "none",
         "query": query,

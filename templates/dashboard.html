@@ -6,7 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+  
+  <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+
 
   <style>
     body {
@@ -176,7 +179,7 @@
       <div class="card">
         <h3>Engagement Summary</h3>
         <canvas id="engagementChart"></canvas>
-        <p class="muted">Total vs recent (7 days)</p>
+        <p class="muted">Total vs last 7 days</p>
       </div>
     </section>
 
@@ -198,7 +201,7 @@
           <tr>
             <td>{{ act.action | default("interaction") }}</td>
             <td>{{ act.user_id | default("unknown") }}</td>
-            <td>{{ act.timestamp }}</td>
+            <td>{{ act.timestamp | default("") }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -219,57 +222,54 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
 
-  if (typeof Chart === "undefined") {
-    console.error("Chart.js not loaded");
-    return;
-  }
-
-  const analytics = JSON.parse(
-    document.getElementById("dashboard-data").textContent
-  );
+  const analyticsElement = document.getElementById("dashboard-data");
+  if (!analyticsElement) return;
+  const analytics = JSON.parse(analyticsElement.textContent);
 
   /* -------------------------
      USER SEGMENTS PIE CHART
   ------------------------- */
   const segmentData = analytics.user_segments || {};
+  const segmentLabels = Object.keys(segmentData);
+  const segmentValues = Object.values(segmentData);
 
-  console.log("Segment Data:", segmentData); // DEBUG
-
-  const labels = Object.keys(segmentData);
-  const values = Object.values(segmentData);
-
-  if (labels.length === 0) {
-    console.warn("No user segment data to display");
-    return;
+  if (segmentLabels.length > 0) {
+    new Chart(document.getElementById("segmentChart"), {
+      type: "pie",
+      data: {
+        labels: segmentLabels,
+        datasets: [{
+          data: segmentValues,
+          backgroundColor: segmentLabels.map(() => '#' + Math.floor(Math.random()*16777215).toString(16))
+        }]
+      }
+    });
   }
-
-  new Chart(document.getElementById("segmentChart"), {
-    type: "pie",
-    data: {
-      labels: labels,
-      datasets: [{
-        data: values
-      }]
-    }
-  });
 
   /* -------------------------
      ENGAGEMENT BAR CHART
   ------------------------- */
-  const totalEngagements =
-    analytics.engagement_metrics?.total_engagements || 0;
-
-  const recentEngagements =
-    analytics.engagement_metrics?.recent_engagements_7d ||
-    analytics.engagement_metrics?.recent_engagements || 0;
+  const totalEngagements = analytics.engagement_metrics?.total_engagements || 0;
+  const recentEngagements = analytics.engagement_metrics?.recent_engagements_7d || 0;
 
   new Chart(document.getElementById("engagementChart"), {
     type: "bar",
     data: {
       labels: ["Total", "Last 7 Days"],
       datasets: [{
-        data: [totalEngagements, recentEngagements]
+        label: 'Engagements',
+        data: [totalEngagements, recentEngagements],
+        backgroundColor: ['#1e88e5', '#43a047']
       }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
     }
   });
 
