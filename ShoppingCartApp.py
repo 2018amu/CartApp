@@ -10,6 +10,7 @@ from flask import (
     url_for,
     send_file,
 )
+from functools import wraps
 from flask_cors import CORS
 from flask_session import Session
 from pymongo import MongoClient
@@ -203,6 +204,8 @@ def build_dashboard_analytics(db):
 def dashboard():
     analytics = build_dashboard_analytics(db)  # Pass your db object here
     return render_template("dashboard.html", analytics=analytics)
+
+
 
 
 # -----------------------------
@@ -496,7 +499,7 @@ def create_order():
         return jsonify({
             "success": True,
             "order_id": order["order_id"]
-        }), 201
+        }), 200
 
     except Exception as e:
         print("ERROR CREATING ORDER:", e)
@@ -556,6 +559,8 @@ def store():
     return render_template("store.html")
 
 
+
+
 # @app.route("/payment")
 # def payment_page():
 #     return render_template("payment.html")
@@ -609,6 +614,14 @@ def admin_required(fn):
             return redirect(url_for("admin_login"))
         return fn(*args, **kwargs)
 
+    return wrapper
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if "profile_id" not in session:
+            return redirect("/store")
+        return f(*args, **kwargs)
     return wrapper
 
 
@@ -1214,6 +1227,26 @@ def api_ai_rebuild():
         print("INDEX ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
+@app.before_request
+def auth_guard():
+    # List of paths allowed without login/session
+    allowed_paths = [
+        "/store",
+        "/store/cart",
+        "/store/cart/payment",  # ✅ Important
+        "/api/store/order",
+        "/static/"
+    ]
+
+    # Check if current path starts with any allowed path
+    if any(request.path.startswith(p) for p in allowed_paths):
+        return  # allow access
+
+    # Protect other routes
+    if "profile_id" not in session:
+        return redirect("/store")
+
+
     # /api/engagement
 
 
@@ -1392,6 +1425,9 @@ def ai_only_search():
     )
 
 
+
+
+
 @app.route("/store/cart")
 def cart_page():
     return render_template("cart.html")
@@ -1405,8 +1441,6 @@ def cart_payment_page():  # ✅ unique function name
 @app.route("/payment-success")
 def payment_success_page():  # ✅ unique function name
     return render_template("payment_success.html")
-
-
 
 
 
