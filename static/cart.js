@@ -68,12 +68,11 @@ function goBack() {
     window.location.href = "/store";
 }
 async function checkout() {
-    if (!cart.length) {
+    if (!cart || cart.length === 0) {
         alert("Your cart is empty");
         return;
     }
 
-    // 1️⃣ Prepare order payload
     const orderData = {
         items: cart.map(item => ({
             product_id: item._id,
@@ -81,44 +80,43 @@ async function checkout() {
             price: item.price,
             quantity: item.quantity
         })),
-        total_amount: cart.reduce(
-            (sum, i) => sum + i.price * i.quantity, 0
-        ),
+        total_amount: cart.reduce((sum, i) => sum + i.price * i.quantity, 0),
         payment_method: "cod"
     };
 
     try {
-        // 2️⃣ SEND order to backend HERE ⬇⬇⬇
         const response = await fetch("/api/store/order", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(orderData)
         });
 
         const data = await response.json();
 
-        // 3️⃣ Handle backend response
         if (!response.ok) {
             alert(data.error || "Order failed");
             return;
         }
 
-        // 4️⃣ Success → clear cart
+        // ✅ Save success info
+        sessionStorage.setItem("orderSuccess", "true");
+        sessionStorage.setItem("orderId", data.order_id);
+
+        // Clear cart
         localStorage.removeItem("cart");
         cart = [];
 
-        alert("Order placed successfully 🎉\nOrder ID: " + data.order_id);
-
-        // 5️⃣ Redirect
+        // Redirect to store
         window.location.href = "/store";
 
-    } catch (err) {
-        console.error("Checkout error:", err);
+    } catch (error) {
+        console.error("Checkout error:", error);
         alert("Server error. Please try again.");
     }
 }
+
+
+
 
 
 document.addEventListener("DOMContentLoaded", renderCart);

@@ -329,3 +329,16 @@ function showNotification(msg) {
 // Init
 // -----------------------------
 document.addEventListener("DOMContentLoaded", initStore);
+document.addEventListener("DOMContentLoaded", () => {
+    const success = sessionStorage.getItem("orderSuccess");
+    const orderId = sessionStorage.getItem("orderId");
+
+    if (success && orderId) {
+        document.getElementById("order-success").style.display = "block";
+        document.getElementById("order-id").textContent = orderId;
+
+        // Clear after showing once
+        sessionStorage.removeItem("orderSuccess");
+        sessionStorage.removeItem("orderId");
+    }
+});

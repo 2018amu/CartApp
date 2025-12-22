@@ -98,7 +98,7 @@ eng_col = db["engagements"]
 profiles_col = db["profiles"]
 newusers_col = db["webusers"]
 products_col = db["products"]
-orders_col = ["orders"]
+orders_collection = ["orders"]
 payments_col = ["payments"]
 
 
@@ -111,7 +111,7 @@ def build_dashboard_analytics(db):
     # Collections
     newusers_col = db["webusers"]
     engagements_col = db["engagements"]
-    orders_col = db["orders"]
+    orders_collection = db["orders"]
     payments_col = db["payments"]
 
     # ----- User metrics -----
@@ -130,7 +130,7 @@ def build_dashboard_analytics(db):
     )
 
     # ----- Store metrics -----
-    total_orders = orders_col.count_documents({})
+    total_orders = orders_collection.count_documents({})
     revenue_cursor = payments_col.aggregate(
         [
             {"$match": {"status": "completed"}},
@@ -237,7 +237,7 @@ def get_dashboard_analytics():
     # -----------------------------
     # STORE ANALYTICS
     # -----------------------------
-    total_orders = orders_col.count_documents({})
+    total_orders = orders_collection.count_documents({})
 
     revenue_cursor = payments_col.aggregate(
         [
@@ -432,25 +432,61 @@ def get_store_categories():
 
 # //api/store/order
 
+@app.route("/api/store/order", methods=["POST"])
+
+
+def create_order():
+    orders_collection = ["orders"]
+    try:
+        payload = request.json or {}
+        items = payload.get("items")
+        total_amount = payload.get("total_amount")
+
+        # Validation
+        if not items or not isinstance(items, list):
+            return jsonify({"error": "Cart is empty"}), 400
+        if not total_amount or total_amount <= 0:
+            return jsonify({"error": "Invalid total amount"}), 400
+
+        # Prepare order document
+        order = {
+            "order_id": f"ORD-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            "user_id": payload.get("user_id"),           # optional
+            "items": items,
+            "total_amount": total_amount,
+            "status": "pending",
+            "shipping_address": payload.get("shipping_address", {}),
+            "payment_method": payload.get("payment_method", "cod"),
+            "created": datetime.utcnow(),
+            "updated": datetime.utcnow()
+        }
+
+        # Insert into MongoDB
+        print(type(orders_collection))
+
+        orders_collection.insert(order)
+        print("Order inserted:", order)
+
+        return jsonify({"status": "ok", "order_id": order["order_id"]}), 201
+
+    except Exception as e:
+        print("Error creating order:", e)
+        return jsonify({"error": str(e)}), 500
+
+
+# --- Order API ---
 # @app.route("/api/store/order", methods=["POST"])
 # def create_order():
 #     payload = request.json or {}
 
-#     items = payload.get("items", [])
-#     total_amount = payload.get("total_amount")
-
-#     # ---- Validation ----
-#     if not items or not isinstance(items, list):
+#     if not payload.get("items"):
 #         return jsonify({"error": "Cart is empty"}), 400
 
-#     if not total_amount or total_amount <= 0:
-#         return jsonify({"error": "Invalid total amount"}), 400
-
 #     order = {
-#         "order_id": f"ORD-{uuid.uuid4().hex[:8].upper()}",
-#         "user_id": payload.get("user_id"),  # optional
-#         "items": items,
-#         "total_amount": total_amount,
+#         "order_id": f"ORD{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+#         "user_id": payload.get("user_id"),
+#         "items": payload.get("items", []),
+#         "total_amount": payload.get("total_amount", 0),
 #         "status": "pending",
 #         "shipping_address": payload.get("shipping_address", {}),
 #         "payment_method": payload.get("payment_method", "cod"),
@@ -458,44 +494,8 @@ def get_store_categories():
 #         "updated": datetime.utcnow()
 #     }
 
-#     result = orders_col.insert_one(order)
-
-#     return jsonify({
-#         "status": "ok",
-#         "order_id": order["order_id"],
-#         "mongo_id": str(result.inserted_id)
-#     }), 201
-
-
-@app.route("/api/store/order", methods=["POST"])
-def create_order():
-    try:
-        payload = request.json
-        print("PAYLOAD RECEIVED:", payload)
-
-        if not payload or not payload.get("items"):
-            return jsonify({"error": "Cart is empty"}), 400
-
-        order = {
-            "order_id": f"ORD{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-            "user_id": payload.get("user_id"),
-            "items": payload.get("items", []),
-            "total_amount": payload.get("total_amount", 0),
-            "status": "pending",
-            "shipping_address": payload.get("shipping_address", {}),
-            "payment_method": payload.get("payment_method"),
-            "created": datetime.utcnow(),
-            "updated": datetime.utcnow(),
-        }
-
-        result = orders_col.insert_one(order)
-        print("ORDER INSERTED:", order)
-
-        return jsonify({"status": "ok", "order_id": order["order_id"]}), 201
-
-    except Exception as e:
-        print("ERROR CREATING ORDER:", e)
-        return jsonify({"error": str(e)}), 500
+#     result = orders_col.insert_one(order)  # ✅ works now
+#     return jsonify({"status": "ok", "order_id": order["order_id"]}), 201
 
 
 # /api/store/payment
@@ -516,7 +516,7 @@ def process_payment():
     }
 
     # Update order status
-    orders_col.update_one(
+    orders_collection.update_one(
         {"order_id": payload.get("order_id")},
         {"$set": {"status": "paid", "updated": datetime.utcnow()}},
     )
