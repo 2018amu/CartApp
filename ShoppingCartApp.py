@@ -433,48 +433,7 @@ def get_store_categories():
     return jsonify({"categories": categories, "subcategories": subcategories})
 
 
-# //api/store/order
 
-@app.route("/api/store/order", methods=["POST"])
-
-
-def create_order():
-    orders_collection = ["orders"]
-    try:
-        payload = request.json or {}
-        items = payload.get("items")
-        total_amount = payload.get("total_amount")
-
-        # Validation
-        if not items or not isinstance(items, list):
-            return jsonify({"error": "Cart is empty"}), 400
-        if not total_amount or total_amount <= 0:
-            return jsonify({"error": "Invalid total amount"}), 400
-
-        # Prepare order document
-        order = {
-            "order_id": f"ORD-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
-            "user_id": payload.get("user_id"),           # optional
-            "items": items,
-            "total_amount": total_amount,
-            "status": "pending",
-            "shipping_address": payload.get("shipping_address", {}),
-            "payment_method": payload.get("payment_method", "cod"),
-            "created": datetime.utcnow(),
-            "updated": datetime.utcnow()
-        }
-
-        # Insert into MongoDB
-        print(type(orders_collection))
-
-        orders_collection.insert(order)
-        print("Order inserted:", order)
-
-        return jsonify({"status": "ok", "order_id": order["order_id"]}), 201
-
-    except Exception as e:
-        print("Error creating order:", e)
-        return jsonify({"error": str(e)}), 500
 
 
 # --- Order API ---
@@ -490,6 +449,7 @@ def create_order():
 #         "user_id": payload.get("user_id"),
 #         "items": payload.get("items", []),
 #         "total_amount": payload.get("total_amount", 0),
+
 #         "status": "pending",
 #         "shipping_address": payload.get("shipping_address", {}),
 #         "payment_method": payload.get("payment_method", "cod"),
@@ -497,10 +457,6 @@ def create_order():
 #         "updated": datetime.utcnow()
 #     }
 
-<<<<<<< HEAD
-#     result = orders_col.insert_one(order)  # ✅ works now
-#     return jsonify({"status": "ok", "order_id": order["order_id"]}), 201
-=======
 #     result = orders_col.insert_one(order)
 
 #     return jsonify({
@@ -544,7 +500,7 @@ def create_order():
     except Exception as e:
         print("ERROR CREATING ORDER:", e)
         return jsonify({"error": str(e)}), 500
->>>>>>> 92fba87385a28c3abb77ce1bc77e56c14399879e
+
 
 
 # /api/store/payment
