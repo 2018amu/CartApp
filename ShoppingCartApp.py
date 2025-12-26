@@ -206,8 +206,6 @@ def dashboard():
     return render_template("dashboard.html", analytics=analytics)
 
 
-
-
 # -----------------------------
 # Route: analytics API (optional)
 # -----------------------------
@@ -493,13 +491,24 @@ def create_order():
 
         result = orders_col.insert_one(order)
         print("ORDER INSERTED:", order)
-        print(type(orders_col))
 
-        # return jsonify({"status": "ok", "order_id": order["order_id"]}), 201
+        # ---------------------------
+        # ✅ Store order info in session
+        # ---------------------------
+        session['order_id'] = order["order_id"]
+        session['total_amount'] = order["total_amount"]
+
+        # You have two options here:
+
+        # Option 1: Return JSON (recommended if your JS handles redirect)
         return jsonify({
             "success": True,
-            "order_id": order["order_id"]
+            "order_id": order["order_id"],
+            "total_amount": order["total_amount"]
         }), 200
+
+        # Option 2: Redirect directly to payment page (less common with JS checkout)
+        # return redirect("/store/cart/payment")
 
     except Exception as e:
         print("ERROR CREATING ORDER:", e)
@@ -559,14 +568,9 @@ def store():
     return render_template("store.html")
 
 
-
-
 # @app.route("/payment")
 # def payment_page():
 #     return render_template("payment.html")
-
-
-
 
 
 @app.route("/api/recommendations/<user_id>")
@@ -614,14 +618,6 @@ def admin_required(fn):
             return redirect(url_for("admin_login"))
         return fn(*args, **kwargs)
 
-    return wrapper
-
-def login_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if "profile_id" not in session:
-            return redirect("/store")
-        return f(*args, **kwargs)
     return wrapper
 
 
@@ -1227,26 +1223,6 @@ def api_ai_rebuild():
         print("INDEX ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
-@app.before_request
-def auth_guard():
-    # List of paths allowed without login/session
-    allowed_paths = [
-        "/store",
-        "/store/cart",
-        "/store/cart/payment",  # ✅ Important
-        "/api/store/order",
-        "/static/"
-    ]
-
-    # Check if current path starts with any allowed path
-    if any(request.path.startswith(p) for p in allowed_paths):
-        return  # allow access
-
-    # Protect other routes
-    if "profile_id" not in session:
-        return redirect("/store")
-
-
     # /api/engagement
 
 
@@ -1425,23 +1401,21 @@ def ai_only_search():
     )
 
 
-
-
-
 @app.route("/store/cart")
 def cart_page():
     return render_template("cart.html")
 
 
 @app.route("/store/cart/payment")
-def cart_payment_page():  # ✅ unique function name
-    return render_template("payment.html")
+def payment():
+    if 'order_id' not in session:
+        return redirect("/store")
+    return render_template("payment.html", order_id=session['order_id'], total_amount=session['total_amount'])
 
 
 @app.route("/payment-success")
 def payment_success_page():  # ✅ unique function name
     return render_template("payment_success.html")
-
 
 
 @app.route("/api/engagement", methods=["GET"])
