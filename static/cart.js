@@ -77,7 +77,7 @@ function goBack() {
 // Checkout
 // -----------------------------
 async function checkout() {
-    if (!cart.length) {
+    if (!cart || cart.length === 0) {
         alert("Your cart is empty");
         return;
     }
@@ -102,15 +102,32 @@ async function checkout() {
 
         const data = await response.json();
 
+<<<<<<< HEAD
+        if (!response.ok) {
+=======
         if (!response.ok || !data.success) {
+>>>>>>> 92fba87385a28c3abb77ce1bc77e56c14399879e
             alert(data.error || "Order failed");
             return;
         }
 
+<<<<<<< HEAD
+        // ✅ Save success info
+        sessionStorage.setItem("orderSuccess", "true");
+        sessionStorage.setItem("orderId", data.order_id);
+
+        // Clear cart
+        localStorage.removeItem("cart");
+=======
         // Clear cart locally
+>>>>>>> 92fba87385a28c3abb77ce1bc77e56c14399879e
         cart = [];
         localStorage.removeItem("cart");
 
+<<<<<<< HEAD
+        // Redirect to store
+        window.location.href = "/store";
+=======
         // ✅ Show Order Submitted page
         const container = document.getElementById("cart-container"); // wrap cart page content in div#cart-container
         container.innerHTML = `
@@ -125,14 +142,21 @@ async function checkout() {
         document.getElementById("goPaymentBtn").addEventListener("click", () => {
             window.location.href = "/store/cart/payment";
         });
+>>>>>>> 92fba87385a28c3abb77ce1bc77e56c14399879e
 
-    } catch (err) {
-        console.error("Checkout error:", err);
+    } catch (error) {
+        console.error("Checkout error:", error);
         alert("Server error. Please try again.");
     }
 }
 
 
+<<<<<<< HEAD
+
+
+
+document.addEventListener("DOMContentLoaded", renderCart);
+=======
 // -----------------------------
 // Initialize cart page
 // -----------------------------
@@ -147,3 +171,4 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+>>>>>>> 92fba87385a28c3abb77ce1bc77e56c14399879e

@@ -112,7 +112,7 @@ def build_dashboard_analytics(db):
     # Collections
     newusers_col = db["webusers"]
     engagements_col = db["engagements"]
-    orders_col = db["orders"]
+    orders_collection = db["orders"]
     payments_col = db["payments"]
 
     # ----- User metrics -----
@@ -131,7 +131,7 @@ def build_dashboard_analytics(db):
     )
 
     # ----- Store metrics -----
-    total_orders = orders_col.count_documents({})
+    total_orders = orders_collection.count_documents({})
     revenue_cursor = payments_col.aggregate(
         [
             {"$match": {"status": "completed"}},
@@ -238,7 +238,7 @@ def get_dashboard_analytics():
     # -----------------------------
     # STORE ANALYTICS
     # -----------------------------
-    total_orders = orders_col.count_documents({})
+    total_orders = orders_collection.count_documents({})
 
     revenue_cursor = payments_col.aggregate(
         [
@@ -431,27 +431,23 @@ def get_store_categories():
     return jsonify({"categories": categories, "subcategories": subcategories})
 
 
-# //api/store/order
 
+
+
+# --- Order API ---
 # @app.route("/api/store/order", methods=["POST"])
 # def create_order():
 #     payload = request.json or {}
 
-#     items = payload.get("items", [])
-#     total_amount = payload.get("total_amount")
-
-#     # ---- Validation ----
-#     if not items or not isinstance(items, list):
+#     if not payload.get("items"):
 #         return jsonify({"error": "Cart is empty"}), 400
 
-#     if not total_amount or total_amount <= 0:
-#         return jsonify({"error": "Invalid total amount"}), 400
-
 #     order = {
-#         "order_id": f"ORD-{uuid.uuid4().hex[:8].upper()}",
-#         "user_id": payload.get("user_id"),  # optional
-#         "items": items,
-#         "total_amount": total_amount,
+#         "order_id": f"ORD{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+#         "user_id": payload.get("user_id"),
+#         "items": payload.get("items", []),
+#         "total_amount": payload.get("total_amount", 0),
+
 #         "status": "pending",
 #         "shipping_address": payload.get("shipping_address", {}),
 #         "payment_method": payload.get("payment_method", "cod"),
@@ -515,6 +511,7 @@ def create_order():
         return jsonify({"error": str(e)}), 500
 
 
+
 # /api/store/payment
 @app.route("/api/store/payment", methods=["POST"])
 def process_payment():
@@ -533,7 +530,7 @@ def process_payment():
     }
 
     # Update order status
-    orders_col.update_one(
+    orders_collection.update_one(
         {"order_id": payload.get("order_id")},
         {"$set": {"status": "paid", "updated": datetime.utcnow()}},
     )
