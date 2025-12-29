@@ -112,7 +112,7 @@ def build_dashboard_analytics(db):
     # Collections
     newusers_col = db["webusers"]
     engagements_col = db["engagements"]
-    orders_collection = db["orders"]
+    orders_col = db["orders"]
     payments_col = db["payments"]
 
     # ----- User metrics -----
@@ -131,7 +131,7 @@ def build_dashboard_analytics(db):
     )
 
     # ----- Store metrics -----
-    total_orders = orders_collection.count_documents({})
+    total_orders = orders_col.count_documents({})
     revenue_cursor = payments_col.aggregate(
         [
             {"$match": {"status": "completed"}},
@@ -238,7 +238,7 @@ def get_dashboard_analytics():
     # -----------------------------
     # STORE ANALYTICS
     # -----------------------------
-    total_orders = orders_collection.count_documents({})
+    total_orders = orders_col.count_documents({})
 
     revenue_cursor = payments_col.aggregate(
         [
@@ -463,52 +463,99 @@ def get_store_categories():
 #         "mongo_id": str(result.inserted_id)
 #     }), 201
 
-
 @app.route("/api/store/order", methods=["POST"])
+
 def create_order():
-    try:
-        payload = request.json
-        print("PAYLOAD RECEIVED:", payload)
+    payload = request.json or {}
+    order_id = f"ORD{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
-        if not payload or not payload.get("items"):
-            return jsonify({"error": "Cart is empty"}), 400
+    order = {
+        "order_id": order_id,
+        "user_id": payload.get("user_id"),
+        "items": payload.get("items", []),
+        "total_amount": payload.get("total_amount", 0),
+        "payment_method": payload.get("payment_method"),
+        "status": "pending",  # will update to 'paid' if COD
+        "created": datetime.utcnow(),
+    }
 
-        order = {
-            "order_id": f"ORD{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+    # Insert order
+    orders_col.insert_one(order)
+
+    # Automatically create payment if COD
+    if str(payload.get("payment_method", "")).lower() == "cod":
+        payment = {
+            "payment_id": f"PAY{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+            "order_id": order_id,
             "user_id": payload.get("user_id"),
-            "items": payload.get("items", []),
-            "total_amount": payload.get("total_amount", 0),
-            "status": "pending",
-            "shipping_address": payload.get("shipping_address", {}),
-            "payment_method": payload.get("payment_method"),
+            "amount": payload.get("total_amount", 0),
+            "currency": "LKR",
+            "method": "cod",
+            "status": "completed",
+            "transaction_id": f"TXN{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
             "created": datetime.utcnow(),
-            "updated": datetime.utcnow(),
         }
+        payments_col.insert_one(payment)
 
-        result = orders_col.insert_one(order)
-        print("ORDER INSERTED:", order)
+        # Update order status to paid
+        orders_col.update_one(
+            {"order_id": order_id},
+            {"$set": {"status": "paid", "updated": datetime.utcnow()}}
+        )
 
-        # ---------------------------
-        # ✅ Store order info in session
-        # ---------------------------
-        session['order_id'] = order["order_id"]
-        session['total_amount'] = order["total_amount"]
+    return jsonify({
+        "success": True,
+        "order_id": order_id,
+        "total_amount": order["total_amount"]
+    })
 
-        # You have two options here:
 
-        # Option 1: Return JSON (recommended if your JS handles redirect)
-        return jsonify({
-            "success": True,
-            "order_id": order["order_id"],
-            "total_amount": order["total_amount"]
-        }), 200
 
-        # Option 2: Redirect directly to payment page (less common with JS checkout)
-        # return redirect("/store/cart/payment")
+# @app.route("/api/store/order", methods=["POST"])
+# def create_order():
+#     try:
+#         payload = request.json
+#         print("PAYLOAD RECEIVED:", payload)
 
-    except Exception as e:
-        print("ERROR CREATING ORDER:", e)
-        return jsonify({"error": str(e)}), 500
+#         if not payload or not payload.get("items"):
+#             return jsonify({"error": "Cart is empty"}), 400
+
+#         order = {
+#             "order_id": f"ORD{datetime.utcnow().strftime('%Y%m%d%H%M%S')}",
+#             "user_id": payload.get("user_id"),
+#             "items": payload.get("items", []),
+#             "total_amount": payload.get("total_amount", 0),
+#             "status": "pending",
+#             "shipping_address": payload.get("shipping_address", {}),
+#             "payment_method": payload.get("payment_method"),
+#             "created": datetime.utcnow(),
+#             "updated": datetime.utcnow(),
+#         }
+
+#         result = orders_col.insert_one(order)
+#         print("ORDER INSERTED:", order)
+
+#         # ---------------------------
+#         # ✅ Store order info in session
+#         # ---------------------------
+#         session['order_id'] = order["order_id"]
+#         session['total_amount'] = order["total_amount"]
+
+#         # You have two options here:
+
+#         # Option 1: Return JSON (recommended if your JS handles redirect)
+#         return jsonify({
+#             "success": True,
+#             "order_id": order["order_id"],
+#             "total_amount": order["total_amount"]
+#         }), 200
+
+#         # Option 2: Redirect directly to payment page (less common with JS checkout)
+#         # return redirect("/store/cart/payment")
+
+#     except Exception as e:
+#         print("ERROR CREATING ORDER:", e)
+#         return jsonify({"error": str(e)}), 500
 
 
 
@@ -530,7 +577,7 @@ def process_payment():
     }
 
     # Update order status
-    orders_collection.update_one(
+    orders_col.update_one(
         {"order_id": payload.get("order_id")},
         {"$set": {"status": "paid", "updated": datetime.utcnow()}},
     )
