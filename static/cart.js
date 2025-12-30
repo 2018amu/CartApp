@@ -96,7 +96,7 @@ async function checkout() {
   const orderData = {
     user_id: localStorage.getItem("userId") || "guest",
     items: cart.map(item => ({
-      product_id: item._id || item.id,
+      product_id: item._id || item.id, // fallback to id if _id missing
       name: item.name,
       price: item.price,
       quantity: item.quantity
@@ -106,6 +106,7 @@ async function checkout() {
   };
 
   try {
+    // Disable checkout button to prevent multiple clicks
     const btn = document.getElementById("checkoutBtn");
     if (btn) btn.disabled = true;
 
@@ -123,24 +124,23 @@ async function checkout() {
       return;
     }
 
-    // Save for payment-success page
+    // Save order info for payment page
     sessionStorage.setItem("orderId", data.order_id);
     sessionStorage.setItem("totalAmount", String(data.total_amount));
-    sessionStorage.setItem("paymentStatus", "completed");
 
-    // Clear cart
+    // Clear cart safely
     clearCart();
 
-    // Redirect to payment-success page
-    window.location.href = "/store/cart/payment-success";
+    // Redirect to payment page
+    window.location.href = `/store/cart/payment?orderId=${data.order_id}&totalAmount=${data.total_amount}`;
 
   } catch (err) {
     console.error("Checkout error:", err);
     alert("Server error. Please try again later.");
+    const btn = document.getElementById("checkoutBtn");
     if (btn) btn.disabled = false;
   }
 }
-
 
 // -----------------------------
 // Initialize cart page

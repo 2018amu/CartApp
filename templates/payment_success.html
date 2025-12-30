@@ -7,24 +7,7 @@
 </head>
 <body>
 
-<div class="success-box"><p><strong>Order ID:</strong> <span id="order-id"></span></p>
-    <p><strong>Total Amount:</strong> LKR <span id="total-amount"></span></p>
-    <p><strong>Status:</strong> <span id="payment-status"></span></p>
-    
-    <script>
-    document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("order-id").textContent = sessionStorage.getItem("orderId") || "N/A";
-        document.getElementById("total-amount").textContent = sessionStorage.getItem("totalAmount") || "0";
-        document.getElementById("payment-status").textContent = sessionStorage.getItem("paymentStatus") || "pending";
-    
-        sessionStorage.clear(); // Clear session after displaying
-    });
-    
-    function goToStore() {
-        window.location.href = "/store";
-    }
-    </script>
-    
+<div class="success-box">
     <h2>🎉 Payment Successful!</h2>
     <p>Your order has been confirmed.</p>
     <p><strong>Order ID:</strong> <span id="order-id"></span></p>
