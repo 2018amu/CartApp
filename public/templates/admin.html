@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Dashboard - Citizen Portal</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="container">
+
+    <h1 class="title">Admin Dashboard</h1>
+
+    <!-- Login Box -->
+    <div id="login-box" class="card login-card">
+      <h2>Admin Login</h2>
+      <form id="login-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" type="text" required>
+
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" required>
+
+        <button type="submit" class="btn-primary">Login</button>
+      </form>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="dashboard" style="display:none;">
+
+      <div class="top-bar">
+        <button id="logoutBtn" class="btn-danger">Logout</button>
+      </div>
+
+      <h2 class="section-title">Insights</h2>
+
+      <div class="chart-grid">
+        <div class="chart-card"><canvas id="ageChart"></canvas></div>
+        <div class="chart-card"><canvas id="jobChart"></canvas></div>
+        <div class="chart-card"><canvas id="serviceChart"></canvas></div>
+        <div class="chart-card"><canvas id="questionChart"></canvas></div>
+      </div>
+
+      <h3 class="section-title">Premium Suggestions</h3>
+      <div id="premiumList" class="card"></div>
+
+      <h3 class="section-title">Recent Engagements</h3>
+
+      <div class="card">
+        <button id="exportCsv" class="btn-primary">Export CSV</button>
+
+        <table id="engTable" class="styled-table">
+          <thead>
+            <tr>
+              <th>Age</th>
+              <th>Job</th>
+              <th>Desires</th>
+              <th>Question</th>
+              <th>Service</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>

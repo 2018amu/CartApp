@@ -1,0 +1,154 @@
+/* ------------------------------
+   GLOBAL STYLING
+--------------------------------*/
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+  }
+  
+  body {
+    background: #f3f6fa;
+    padding: 20px;
+    color: #2d3748;
+  }
+  
+  /* ------------------------------
+     HEADER
+  --------------------------------*/
+  .topbar {
+    background: #0059ff;
+    color: white;
+    padding: 18px 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 14px rgba(0, 89, 255, 0.3);
+  }
+  
+  .topbar h1 {
+    font-size: 26px;
+    font-weight: 700;
+  }
+  
+  /* ------------------------------
+     PANEL (CARD)
+  --------------------------------*/
+  .panel {
+    background: white;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    transition: 0.2s ease-in-out;
+  }
+  
+  .panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+  
+  .panel h2 {
+    margin-bottom: 18px;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  /* ------------------------------
+     FORM INPUTS
+  --------------------------------*/
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+  }
+  
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #cbd5e0;
+    border-radius: 10px;
+    background: #ffffff;
+    font-size: 15px;
+    transition: 0.2s ease-in-out;
+  }
+  
+  input:focus {
+    border-color: #0059ff;
+    box-shadow: 0 0 0 3px rgba(0, 89, 255, 0.25);
+    outline: none;
+  }
+  
+  /* ------------------------------
+     BUTTONS
+  --------------------------------*/
+  .btn {
+    background: #0059ff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.25s ease;
+    margin-top: 5px;
+  }
+  
+  .btn:hover {
+    background: #0041c7;
+    box-shadow: 0 6px 16px rgba(0, 89, 255, 0.3);
+  }
+  
+  .rebuild-btn {
+    background: #ff9500;
+  }
+  
+  .rebuild-btn:hover {
+    background: #cc7700;
+    box-shadow: 0 6px 16px rgba(255, 149, 0, 0.35);
+  }
+  
+  /* ------------------------------
+     RESULT BOXES
+  --------------------------------*/
+  .result-box {
+    margin-top: 12px;
+    padding: 12px 15px;
+    background: #eef3ff;
+    border-left: 4px solid #0059ff;
+    border-radius: 8px;
+    font-size: 14px;
+    display: none; /* You can display via JS */
+  }
+  
+  .result-box.success {
+    background: #e6ffed;
+    border-left-color: #00b341;
+  }
+  
+  .result-box.error {
+    background: #ffe6e6;
+    border-left-color: #ff2d2d;
+  }
+  
+  /* ------------------------------
+     RESPONSIVE
+  --------------------------------*/
+  @media (max-width: 600px) {
+    header h1 {
+      font-size: 20px;
+    }
+  
+    .panel {
+      padding: 18px;
+    }
+  
+    .btn {
+      width: 100%;
+    }
+  }
+  

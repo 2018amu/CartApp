@@ -3,13 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <title>Citizen Services Portal</title>
-    <!-- Correct path: remove /public/ -->
-    <link rel="stylesheet" href="static/modern.css" />
+    <link rel="stylesheet" href="/static/modern.css" />
   </head>
   <body>
     <div class="container">
       <!-- LEFT SIDEBAR -->
       <aside class="sidebar">
+        
         <h2>Categories</h2>
         <div id="category-list"></div>
 
@@ -18,20 +18,21 @@
           <button onclick="setLang('si')">සිංහල</button>
           <button onclick="setLang('ta')">தமிழ்</button>
         </div>
+        
 
-        <li><a href="templates/dashboard.html">Enhanced Dashboard</a></li>
+        <!-- <div class="ads" id="ads-area">Ad Space</div> -->
+        <li><a href="/dashboard">Enhanced Dashboard</a></li>
       </aside>
 
       <!-- CENTER CONTENT -->
       <section class="middle">
-        <button class="nav-btn" onclick="window.location.href='templates/recommendations.html'">
+        <button class="nav-btn" onclick="window.location.href='/recommendations'">
           Recommendations
         </button>
         
-        <button class="nav-btn" onclick="window.location.href='templates/store.html'">
+        <button class="nav-btn" onclick="window.location.href='/store'">
           Advertisements
         </button>
-        
        
         <h2 id="sub-title">Select Subservice</h2>
         <ul id="sub-list"></ul>
@@ -44,6 +45,11 @@
         <h3 id="q-title">Please Select Question</h3>
         <ul id="question-list"></ul>
         <div id="answer-box"></div>
+
+        
+        
+       
+
 
         <!-- Profile Modal -->
         <div id="profile-modal" class="modal">
@@ -76,12 +82,15 @@
           <h2>Hybrid AI Chat</h2>
           <div id="chat-container" class="chat-container"></div>
           <div class="chat-input-area">
-            <input type="text" id="chat-text" placeholder="Type your question..." />
+            <input
+              type="text"
+              id="chat-text"
+              placeholder="Type your question..."
+            />
             <button onclick="sendChat()">Send</button>
           </div>
           <div id="chat-result"></div>
         </div>
-
         <!-- Engagement Trigger -->
         <div class="engagement-box">
           <button id="engagement-btn">Send Engagement Data</button>
@@ -140,9 +149,18 @@
             <input id="service_preferences" />
 
             <h3>Consent</h3>
-            <label><input type="checkbox" id="marketing_emails" /> Marketing Emails</label>
-            <label><input type="checkbox" id="personalized_ads" /> Personalized Ads</label>
-            <label><input type="checkbox" id="data_analytics" /> Data Analytics</label>
+            <label
+              ><input type="checkbox" id="marketing_emails" /> Marketing
+              Emails</label
+            >
+            <label
+              ><input type="checkbox" id="personalized_ads" /> Personalized
+              Ads</label
+            >
+            <label
+              ><input type="checkbox" id="data_analytics" /> Data
+              Analytics</label
+            >
 
             <button onclick="saveExtendedProfile()">Save Profile</button>
           </div>
@@ -151,7 +169,6 @@
       </aside>
     </div>
 
-    <!-- Correct path for JS -->
-    <script src="static/finalscript.js"></script>
+    <script src="/static/finalscript.js"></script>
   </body>
 </html>
