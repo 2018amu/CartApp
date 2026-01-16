@@ -814,12 +814,16 @@ _index, _meta = load_faiss_index()
 # ---------------- Routes ----------------
 
 
-@app.route("/")
+# @app.route("/")
+# def home():
+#     try:
+#         return render_template("mainfaiss.html")
+#     except Exception:
+#         return "Citizen Portal API Running"
+@app.route('/')
 def home():
-    try:
-        return render_template("mainfaiss.html")
-    except Exception:
-        return "Citizen Portal API Running"
+    return "CartApp Backend is running!"
+
 
 
 # ---------------- Admin ----------------
