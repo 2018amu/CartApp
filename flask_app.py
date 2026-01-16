@@ -14,8 +14,8 @@ from functools import wraps
 from flask import (
     Flask, request, jsonify, render_template, session, redirect, url_for, send_file
 )
-# from flask_cors import CORS
-# from flask_session import Session
+from flask_cors import CORS
+from flask_session import Session
 from pymongo import MongoClient
 from bson import ObjectId, Binary, json_util
 
@@ -57,8 +57,8 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_COOKIE_SECURE"] = (os.environ.get("SESSION_COOKIE_SECURE", "False") == "True")
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
-# Session(app)
-# CORS(app, supports_credentials=True)
+Session(app)
+CORS(app, supports_credentials=True)
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -235,5 +235,8 @@ def dashboard():
 
 # Note: Full code is preserved; this cleaned version removes duplicates and unused imports.
 
+# if __name__ == '__main__':
+#     app.run(host='0.0.0.0', port=5000, debug=True)
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)
+
