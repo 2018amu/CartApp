@@ -1,5 +1,10 @@
-flask
-flask-cors
+Flask
+Flask-Cors
+Flask-Session
 pymongo
 dnspython
-gunicorn
+bcrypt
+numpy
+sentence-transformers
+faiss-cpu
+openai
