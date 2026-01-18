@@ -814,15 +814,15 @@ _index, _meta = load_faiss_index()
 # ---------------- Routes ----------------
 
 
-# @app.route("/")
-# def home():
-#     try:
-#         return render_template("mainfaiss.html")
-#     except Exception:
-#         return "Citizen Portal API Running"
-@app.route('/')
+@app.route("/")
 def home():
-    return "CartApp Backend is running!"
+    try:
+        return render_template("mainfaiss.html")
+    except Exception:
+        return "Citizen Portal API Running"
+# @app.route('/')
+# def home():
+#     return "CartApp Backend is running!"
 
 
 
@@ -1495,36 +1495,36 @@ def ask_ai_with_context_single(query, context_docs=[]):
 
 
 # ---------------- Default admin create & startup ----------------
-def create_default_admin():
-    admin = admins_col.find_one({"username": "admin"})
-    if admin:
-        stored = admin.get("password")
-        if isinstance(stored, str):
-            admins_col.delete_one({"_id": admin["_id"]})
-        else:
-            return
-    pwd = os.environ.get("ADMIN_PWD", "admin123")
-    hashed = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt())
-    admins_col.insert_one({"username": "admin", "password": hashed})
-    logger.info("Default admin created: username='admin' (or already exists)")
+# def create_default_admin():
+#     admin = admins_col.find_one({"username": "admin"})
+#     if admin:
+#         stored = admin.get("password")
+#         if isinstance(stored, str):
+#             admins_col.delete_one({"_id": admin["_id"]})
+#         else:
+#             return
+#     pwd = os.environ.get("ADMIN_PWD", "admin123")
+#     hashed = bcrypt.hashpw(pwd.encode("utf-8"), bcrypt.gensalt())
+#     admins_col.insert_one({"username": "admin", "password": hashed})
+#     logger.info("Default admin created: username='admin' (or already exists)")
 
 
-if __name__ == "__main__":
-    # create default admin if missing
-    create_default_admin()
+# if __name__ == "__main__":
+#     # create default admin if missing
+#     create_default_admin()
 
-    # build index if FAISS is available and index missing (optional)
-    if FAISS_AVAILABLE and (not INDEX_PATH.exists() or not META_PATH.exists()):
-        built = build_faiss_index()
-        if built:
-            logger.info("Built FAISS index on startup.")
+#     # build index if FAISS is available and index missing (optional)
+#     if FAISS_AVAILABLE and (not INDEX_PATH.exists() or not META_PATH.exists()):
+#         built = build_faiss_index()
+#         if built:
+#             logger.info("Built FAISS index on startup.")
 
-    # show registered routes — quick sanity check to avoid 404 confusion
-    for rule in app.url_map.iter_rules():
-        logger.info("Route -> %s : %s", rule.rule,
-                    ",".join(sorted(rule.methods)))
+#     # show registered routes — quick sanity check to avoid 404 confusion
+#     for rule in app.url_map.iter_rules():
+#         logger.info("Route -> %s : %s", rule.rule,
+#                     ",".join(sorted(rule.methods)))
 
-    # start server
-    # app.run(debug=True, host="127.0.0.1", port=int(os.getenv("PORT", "5000")))
-    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+#     # start server
+#     # app.run(debug=True, host="127.0.0.1", port=int(os.getenv("PORT", "5000")))
+#     app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
 
