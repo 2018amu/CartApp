@@ -1,11 +1,6 @@
-from flask import Flask
 
-app = Flask(__name__)
+# A very simple Flask Hello World app for you to get started with..
+from ShoppingCartApp import app
 
-@app.route("/")
-def home():
-    return "CartApp Backend is Working"
 
-# For local testing only
-# if __name__ == "__main__":
-#     app.run(debug=True)
+
